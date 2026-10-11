@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { EditorIcon, Glyph } from './editor-icons';
 import { Dots, type Pt, VizFrame } from './primitives';
 import { VaseArt } from './VaseArt';
 
@@ -10,8 +11,9 @@ import { VaseArt } from './VaseArt';
  */
 
 interface ToolbarProps extends Pt {
-  mode: string;
   w: number;
+  /** Narrow layout, where labels set larger. */
+  narrow?: boolean;
 }
 
 interface LayerRowProps extends Pt {
@@ -56,6 +58,12 @@ const MASK = 'rgba(167,139,250,0.6)';
 const OUTPAINT = '#2a1650';
 const GUIDE = '#ef5b8c';
 
+/** Measured widths of the toolbar's "Inpaint" and "Model" labels at each layout's type size. */
+const LABEL_WIDTH = {
+  wide: { mode: 47, model: 43 },
+  narrow: { mode: 57, model: 51 },
+} as const;
+
 const BLEND_MODES = ['Normal', 'Multiply', 'Screen', 'Overlay', 'Darken', 'Lighten', 'Color Dodge'];
 
 function BlurDefs({ id }: BlurDefsProps) {
@@ -68,25 +76,40 @@ function BlurDefs({ id }: BlurDefsProps) {
   );
 }
 
-/** The floating toolbar Generative Fill shows above the image while editing. */
-function EditToolbar({ x, y, mode, w }: ToolbarProps) {
+/**
+ * The floating toolbar Generative Fill shows while inpainting, as the editor
+ * lays it out: mode and model menus, then brush, eraser, and brush size, then
+ * undo and redo.
+ */
+function EditToolbar({ x, y, w, narrow }: ToolbarProps) {
+  const label = narrow ? LABEL_WIDTH.narrow : LABEL_WIDTH.wide;
+  const iconY = y + 13;
+  const modeChevronX = x + 44 + label.mode;
+  const modelSepX = modeChevronX + 19;
+  const modelChevronX = modelSepX + 18 + label.model;
+  const right = x + w;
   return (
     <g>
-      <rect x={x} y={y} width={w} height={42} rx={21} fill="#1f1f1d" stroke={STROKE} />
-      <text x={x + 18} y={y + 26} className="v-label" fill={PAPER}>
-        {mode} ▾
+      <rect x={x} y={y} width={w} height={42} rx={20} fill="#1f1f1d" stroke={STROKE} />
+      <EditorIcon x={x + 14} y={iconY} glyph={Glyph.INPAINT_BRUSH} size={16} color={PAPER} strokeWidth={2.5} />
+      <text x={x + 38} y={y + 26} className="v-label" fill={PAPER}>
+        Inpaint
       </text>
-      <line x1={x + 118} y1={y + 12} x2={x + 118} y2={y + 30} stroke={STROKE} />
-      <text x={x + 132} y={y + 26} className="v-label" fill={PAPER}>
-        Model ▾
+      <EditorIcon x={modeChevronX} y={y + 17} glyph={Glyph.CHEVRON_DOWN} size={9} color={PAPER} strokeWidth={2} />
+      <line x1={modelSepX} y1={y + 12} x2={modelSepX} y2={y + 30} stroke={STROKE} />
+      <text x={modelSepX + 12} y={y + 26} className="v-label" fill={PAPER}>
+        Model
       </text>
-      <circle cx={x + w - 128} cy={y + 21} r={13} fill={PAPER} />
-      <path d={`M${x + w - 134} ${y + 27}l9-11`} stroke={INK} strokeWidth="1.6" strokeLinecap="round" />
-      <rect x={x + w - 104} y={y + 14} width={14} height={14} rx={3} fill="none" stroke={FOG} strokeWidth="1.3" transform={`rotate(45 ${x + w - 97} ${y + 21})`} />
-      <path d={`M${x + w - 76} ${y + 15}h12M${x + w - 76} ${y + 21}h12M${x + w - 76} ${y + 27}h12`} stroke={FOG} strokeWidth="1.4" />
-      <text x={x + w - 42} y={y + 27} className="v-label" fill={FOG}>
-        ↶ ↷
-      </text>
+      <EditorIcon x={modelChevronX} y={y + 17} glyph={Glyph.CHEVRON_DOWN} size={9} color={PAPER} strokeWidth={2} />
+      <line x1={right - 176} y1={y + 12} x2={right - 176} y2={y + 30} stroke={STROKE} />
+      <rect x={right - 168} y={y + 7} width={44} height={28} rx={8} fill="#2c2c29" />
+      <EditorIcon x={right - 162} y={iconY} glyph={Glyph.INPAINT_BRUSH} size={16} color={PAPER} />
+      <EditorIcon x={right - 142} y={y + 17} glyph={Glyph.CHEVRON_DOWN} size={9} color={PAPER} strokeWidth={2} />
+      <EditorIcon x={right - 116} y={iconY} glyph={Glyph.ERASER} size={16} color={FOG} />
+      <EditorIcon x={right - 90} y={iconY} glyph={Glyph.BRUSH_SIZE} size={16} color={FOG} />
+      <line x1={right - 64} y1={y + 12} x2={right - 64} y2={y + 30} stroke={STROKE} />
+      <EditorIcon x={right - 56} y={iconY} glyph={Glyph.UNDO} size={16} color={FOG} />
+      <EditorIcon x={right - 30} y={iconY} glyph={Glyph.REDO} size={16} color={FOG} />
     </g>
   );
 }
@@ -275,7 +298,7 @@ function Wide() {
       <text x={190} y={120} className="v-kicker" fill={FOG}>
         generative fill, inpaint
       </text>
-      <EditToolbar x={180} y={132} mode="Inpaint" w={400} />
+      <EditToolbar x={180} y={132} w={400} />
       <VaseArt x={190} y={190} w={380} h={286} />
       <MaskStroke />
       <circle cx={404} cy={222} r={15} fill="none" stroke={PAPER} strokeWidth="1.5" />
@@ -307,7 +330,7 @@ function Narrow() {
   return (
     <>
       <Dots width={600} height={760} color="rgba(244,241,232,0.07)" background={CANVAS} />
-      <EditToolbar x={60} y={20} mode="Inpaint" w={480} />
+      <EditToolbar x={60} y={20} w={480} narrow />
       <VaseArt x={40} y={78} w={520} h={300} />
       <g transform="translate(300 180) scale(1.35) translate(-333 -214)">
         <MaskStroke />

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { EditorIcon, Glyph } from './editor-icons';
 import { Dots, type Pt, VizFrame } from './primitives';
 import { VaseArt } from './VaseArt';
 
@@ -203,35 +204,49 @@ function Cursor({ x, y }: Pt) {
   );
 }
 
-/** The toolbar that floats over a multi-selection, with its Build App tooltip. */
+/**
+ * The toolbar that floats over a multi-selection, as the editor draws it:
+ * Tidy, Download, Align, and Wrap in Section, then Build App and Run Selected,
+ * each behind a divider. Build App carries its tooltip and the cursor.
+ */
 function SelectionToolbar({ x, y, compact }: SelectionToolbarProps) {
-  const iconCount = compact ? 2 : 4;
-  const buildX = x + 60 + iconCount * 30;
-  const width = buildX - x + 236;
+  const cell = 34;
+  const iconY = y + 12;
+  const alignX = x + 6 + cell * 2;
+  const wrapX = alignX + 48;
+  const buildX = wrapX + cell + 14;
+  const buildW = compact ? 138 : 124;
+  const runX = buildX + buildW + 14;
+  const runW = compact ? 142 : 124;
+  const width = runX + runW + 6 - x;
+  const buildCenter = buildX + buildW / 2;
   return (
     <g>
-      <rect x={x} y={y} width={width} height={44} rx={22} fill={NODE} stroke={NODE_STROKE} />
-      <circle cx={x + 24} cy={y + 22} r={9} fill={SIGNAL} />
-      {Array.from({ length: iconCount }, (_, index) => (
-        <rect key={index} x={x + 52 + index * 30} y={y + 15} width={14} height={14} rx={3} fill="none" stroke={FOG} strokeWidth="1.3" />
-      ))}
-      <line x1={buildX - 6} y1={y + 12} x2={buildX - 6} y2={y + 32} stroke={NODE_STROKE} />
-      <rect x={buildX} y={y + 6} width={112} height={32} rx={16} fill="#2c2c29" />
-      <rect x={buildX + 12} y={y + 15} width={13} height={13} rx={3} fill="none" stroke={PAPER} strokeWidth="1.4" />
-      <text x={buildX + 32} y={y + 27} className="v-label" fill={PAPER}>
+      <rect x={x} y={y} width={width} height={44} rx={14} fill={NODE} stroke={NODE_STROKE} />
+      <EditorIcon x={x + 14} y={iconY} glyph={Glyph.TIDY} size={20} color={FOG} />
+      <EditorIcon x={x + 14 + cell} y={iconY} glyph={Glyph.DOWNLOAD} size={20} color={FOG} />
+      <EditorIcon x={alignX + 6} y={iconY} glyph={Glyph.ALIGN_LEFT} size={20} color={FOG} />
+      <EditorIcon x={alignX + 30} y={iconY + 6} glyph={Glyph.CHEVRON_DOWN} size={9} color={FOG} strokeWidth={2} />
+      <EditorIcon x={wrapX + 7} y={iconY} glyph={Glyph.WRAP_IN_SECTION} size={20} color={FOG} />
+      <line x1={buildX - 7} y1={y + 14} x2={buildX - 7} y2={y + 30} stroke={NODE_STROKE} />
+      <rect x={buildX} y={y + 6} width={buildW} height={32} rx={10} fill="#2c2c29" />
+      <EditorIcon x={buildX + 12} y={y + 14} glyph={Glyph.APPS} size={16} color={PAPER} strokeWidth={2} />
+      <text x={buildX + 34} y={y + 27} className="v-label" fill={PAPER}>
         Build App
       </text>
-      <text x={buildX + 126} y={y + 27} className="v-label" fill={PAPER}>
+      <line x1={runX - 7} y1={y + 14} x2={runX - 7} y2={y + 30} stroke={NODE_STROKE} />
+      <rect x={runX} y={y + 6} width={runW} height={32} rx={10} fill="#2c2c29" />
+      <text x={runX + runW / 2} y={y + 27} textAnchor="middle" className="v-label" fill={PAPER}>
         Run Selected
       </text>
-      <rect x={buildX - 80} y={y - 58} width={272} height={46} rx={10} fill={PAPER} />
-      <text x={buildX + 56} y={y - 39} textAnchor="middle" className="v-small" fill={INK}>
+      <rect x={buildCenter - 136} y={y - 58} width={272} height={46} rx={10} fill={PAPER} />
+      <text x={buildCenter} y={y - 39} textAnchor="middle" className="v-small" fill={INK}>
         Turns the selection into an app
       </text>
-      <text x={buildX + 56} y={y - 21} textAnchor="middle" className="v-small" fill={INK}>
+      <text x={buildCenter} y={y - 21} textAnchor="middle" className="v-small" fill={INK}>
         you can share or run again.
       </text>
-      <Cursor x={buildX + 78} y={y + 24} />
+      <Cursor x={buildX + buildW - 12} y={y + 24} />
     </g>
   );
 }
