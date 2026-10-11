@@ -35,6 +35,10 @@ interface FlowNodeProps {
   children?: ReactNode;
 }
 
+interface NodeIconProps extends Pt {
+  icon: FlowNodeProps['icon'];
+}
+
 interface TypedWireProps {
   from: Pt;
   to: Pt;
@@ -77,7 +81,7 @@ const TYPE_COLOR: Record<PortType, string> = {
   [PortType.IMAGE]: '#e6a03a',
 };
 
-function NodeIcon({ x, y, icon }: Pt & { icon: FlowNodeProps['icon'] }) {
+function NodeIcon({ x, y, icon }: NodeIconProps) {
   if (icon === 'text') {
     return (
       <text x={x} y={y + 9} className="v-kicker" fill={FOG}>
@@ -217,9 +221,6 @@ function PreviewCard({ x, y, w, h, arrowX, compact }: PreviewCardProps) {
       <text x={x + 38} y={y + 31} className="v-kicker" fill="#5c5b54">
         live preview
       </text>
-      <text x={x + w - 20} y={y + 31} textAnchor="end" className="v-kicker" fill="#5c5b54">
-        5 nodes → 1 app
-      </text>
       <text x={x + 20} y={y + 70} className="v-display" fill={INK}>
         Vase studio
       </text>
@@ -323,7 +324,7 @@ function Wide() {
 
       {/* Typed wires: text in blue, images in amber */}
       <TypedWire from={{ x: 240, y: 226 }} to={{ x: 290, y: 278 }} type={PortType.TEXT} />
-      <TypedWire from={{ x: 240, y: 404 }} to={{ x: 290, y: 308 }} type={PortType.IMAGE} />
+      <TypedWire from={{ x: 240, y: 412 }} to={{ x: 290, y: 308 }} type={PortType.IMAGE} />
       <TypedWire from={{ x: 480, y: 330 }} to={{ x: 530, y: 214 }} type={PortType.IMAGE} />
       <TypedWire from={{ x: 680, y: 214 }} to={{ x: 730, y: 286 }} type={PortType.IMAGE} />
       <TypedWire from={{ x: 480, y: 330 }} to={{ x: 530, y: 610 }} type={PortType.IMAGE} dim />
@@ -337,8 +338,8 @@ function Wide() {
           travertine, soft light
         </text>
       </FlowNode>
-      <FlowNode x={60} y={306} w={180} h={196} icon="image" name="Image" footer="add-images" outputs={[{ y: 98, type: PortType.IMAGE, active: true }]}>
-        <VaseArt x={74} y={344} w={152} h={112} />
+      <FlowNode x={60} y={314} w={180} h={196} icon="image" name="Image" footer="add-images" outputs={[{ y: 98, type: PortType.IMAGE, active: true }]}>
+        <VaseArt x={74} y={352} w={152} h={112} />
       </FlowNode>
       <FlowNode
         x={290}
@@ -347,7 +348,7 @@ function Wide() {
         h={240}
         icon="image"
         name="Image 1"
-        meta="image model"
+        meta="model"
         footer="references"
         inputs={[
           { y: 84, type: PortType.TEXT },
@@ -366,14 +367,18 @@ function Wide() {
         <VaseArt x={744} y={226} w={122} h={110} variant="generated" />
         <path d="M798 270l16 11-16 11z" fill={PAPER} />
       </FlowNode>
-      <FlowNode x={530} y={560} w={150} h={100} icon="text" name="Caption" meta="outside" dim inputs={[{ y: 50, type: PortType.IMAGE }]} />
+      <FlowNode x={530} y={560} w={150} h={100} icon="text" name="Caption" dim inputs={[{ y: 50, type: PortType.IMAGE }]}>
+        <text x={544} y={620} className="v-small" fill={FOG}>
+          not in selection
+        </text>
+      </FlowNode>
 
       {/* What the planner derived */}
-      <Tag x={184} y={155} label="input" fill={SIGNAL} color={INK} />
-      <Tag x={184} y={295} label="input" fill={SIGNAL} color={INK} />
-      <Tag x={395} y={183} label="internal" fill="#2d2e29" color={FOG} stroke="#45463f" />
-      <Tag x={595} y={149} label="internal" fill="#2d2e29" color={FOG} stroke="#45463f" />
-      <Tag x={815} y={179} label="output" fill={SIGNAL} color={INK} />
+      <Tag x={60} y={140} label="input" fill={SIGNAL} color={INK} />
+      <Tag x={60} y={288} label="input" fill={SIGNAL} color={INK} />
+      <Tag x={290} y={168} label="internal" fill="#2d2e29" color={FOG} stroke="#45463f" />
+      <Tag x={530} y={134} label="internal" fill="#2d2e29" color={FOG} stroke="#45463f" />
+      <Tag x={730} y={164} label="output" fill={SIGNAL} color={INK} />
 
       {/* A sticky note, the way creators document workflows */}
       <rect x={60} y={556} width={210} height={108} rx={4} fill="#e8c46a" />
@@ -415,12 +420,12 @@ function Narrow() {
       </text>
 
       <rect x={24} y={78} width={552} height={300} rx={14} fill="rgba(199,243,107,0.04)" stroke={SIGNAL} strokeWidth={1.5} strokeDasharray="8 6" />
-      <text x={40} y={104} className="v-kicker" fill={SIGNAL}>
+      <text x={556} y={102} textAnchor="end" className="v-kicker" fill={SIGNAL}>
         4 nodes selected
       </text>
 
       <TypedWire from={{ x: 268, y: 168 }} to={{ x: 324, y: 160 }} type={PortType.TEXT} />
-      <TypedWire from={{ x: 268, y: 300 }} to={{ x: 324, y: 190 }} type={PortType.IMAGE} />
+      <TypedWire from={{ x: 268, y: 312 }} to={{ x: 324, y: 190 }} type={PortType.IMAGE} />
       <path d="M440 236V262" stroke={TYPE_COLOR[PortType.IMAGE]} strokeWidth={2} />
 
       <FlowNode x={44} y={118} w={224} h={100} icon="text" name="Prompt" meta="38 chars" outputs={[{ y: 50, type: PortType.TEXT, active: true }]}>
@@ -428,8 +433,8 @@ function Narrow() {
           ceramic vase, soft light
         </text>
       </FlowNode>
-      <FlowNode x={44} y={236} w={224} h={128} icon="image" name="Image" outputs={[{ y: 64, type: PortType.IMAGE, active: true }]}>
-        <VaseArt x={58} y={270} w={196} h={80} />
+      <FlowNode x={44} y={248} w={224} h={128} icon="image" name="Image" outputs={[{ y: 64, type: PortType.IMAGE, active: true }]}>
+        <VaseArt x={58} y={282} w={196} h={80} />
       </FlowNode>
       <FlowNode
         x={324}
@@ -452,9 +457,9 @@ function Narrow() {
       <circle cx={440} cy={236} r={5.5} fill={NODE} stroke={TYPE_COLOR[PortType.IMAGE]} strokeWidth={2} />
       <circle cx={440} cy={262} r={5.5} fill={NODE} stroke={TYPE_COLOR[PortType.IMAGE]} strokeWidth={2} />
 
-      <Tag x={212} y={107} label="input" fill={SIGNAL} color={INK} />
-      <Tag x={212} y={225} label="input" fill={SIGNAL} color={INK} />
-      <Tag x={496} y={251} label="output" fill={SIGNAL} color={INK} />
+      <Tag x={44} y={92} label="input" fill={SIGNAL} color={INK} />
+      <Tag x={44} y={222} label="input" fill={SIGNAL} color={INK} />
+      <Tag x={324} y={238} label="output" fill={SIGNAL} color={INK} />
 
       <rect x={372} y={396} width={204} height={44} rx={22} fill={NODE} stroke={SIGNAL} strokeWidth={2} />
       <text x={474} y={424} textAnchor="middle" className="v-label" fill={PAPER}>
