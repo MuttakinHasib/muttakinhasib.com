@@ -18,12 +18,25 @@ import { useCallback, useMemo, useState } from 'react';
 import { type AppPlan, planApp, type WorkflowEdgeSpec, WorkflowKind, type WorkflowNodeSpec } from './app-plan';
 import { DemoFrame } from './DemoFrame';
 
-type Role = 'input' | 'output' | 'internal' | 'external' | null;
+const PreviewRole = {
+  INPUT: 'input',
+  OUTPUT: 'output',
+  DIM: 'dim',
+} as const;
+type PreviewRole = (typeof PreviewRole)[keyof typeof PreviewRole];
+
+const DataType = {
+  TEXT: 'text',
+  IMAGE: 'image',
+  VIDEO: 'video',
+  AUDIO: 'audio',
+} as const;
+type DataType = (typeof DataType)[keyof typeof DataType];
 
 interface WorkflowData extends Record<string, unknown> {
   label: string;
   kind: WorkflowKind;
-  role: Role;
+  role: PreviewRole | null;
 }
 
 type WorkflowNode = Node<WorkflowData, 'workflow'>;
@@ -33,30 +46,41 @@ interface PositionedSpec extends WorkflowNodeSpec {
   y: number;
 }
 
-interface PreviewProps {
+interface AppPreviewProps {
   plan: AppPlan;
   byId: Map<string, WorkflowNodeSpec>;
 }
 
 const KIND_LABEL: Record<WorkflowKind, string> = {
-  [WorkflowKind.TEXT_INPUT]: 'input / text',
-  [WorkflowKind.IMAGE_INPUT]: 'input / image',
-  [WorkflowKind.IMAGE]: 'generate / image',
-  [WorkflowKind.EDIT]: 'edit / image',
-  [WorkflowKind.VIDEO]: 'generate / video',
-  [WorkflowKind.TEXT]: 'generate / text',
-  [WorkflowKind.AUDIO]: 'generate / audio',
+  [WorkflowKind.TEXT_INPUT]: 'prompt',
+  [WorkflowKind.IMAGE_INPUT]: 'image',
+  [WorkflowKind.IMAGE]: 'generate image',
+  [WorkflowKind.EDIT]: 'edit image',
+  [WorkflowKind.VIDEO]: 'image to video',
+  [WorkflowKind.TEXT]: 'generate text',
+  [WorkflowKind.AUDIO]: 'sound effects',
+};
+
+/** What each kind emits, which colours its output port and outgoing wires. */
+const OUTPUT_TYPE: Record<WorkflowKind, DataType> = {
+  [WorkflowKind.TEXT_INPUT]: DataType.TEXT,
+  [WorkflowKind.IMAGE_INPUT]: DataType.IMAGE,
+  [WorkflowKind.IMAGE]: DataType.IMAGE,
+  [WorkflowKind.EDIT]: DataType.IMAGE,
+  [WorkflowKind.VIDEO]: DataType.VIDEO,
+  [WorkflowKind.TEXT]: DataType.TEXT,
+  [WorkflowKind.AUDIO]: DataType.AUDIO,
 };
 
 const specs: PositionedSpec[] = [
   { id: 'prompt', label: 'Prompt', kind: WorkflowKind.TEXT_INPUT, x: 0, y: 0 },
   { id: 'reference', label: 'Reference image', kind: WorkflowKind.IMAGE_INPUT, x: 0, y: 130 },
   { id: 'style', label: 'Style preset', kind: WorkflowKind.TEXT_INPUT, x: 0, y: 260 },
-  { id: 'image', label: 'Image model', kind: WorkflowKind.IMAGE, x: 240, y: 130 },
-  { id: 'sound', label: 'Sound effects', kind: WorkflowKind.AUDIO, x: 240, y: 330 },
-  { id: 'upscale', label: 'Upscale', kind: WorkflowKind.EDIT, x: 480, y: 50 },
-  { id: 'caption', label: 'Caption', kind: WorkflowKind.TEXT, x: 480, y: 230 },
-  { id: 'video', label: 'Image to video', kind: WorkflowKind.VIDEO, x: 720, y: 50 },
+  { id: 'image', label: 'Image model', kind: WorkflowKind.IMAGE, x: 250, y: 130 },
+  { id: 'sound', label: 'Sound effects', kind: WorkflowKind.AUDIO, x: 250, y: 330 },
+  { id: 'upscale', label: 'Upscale', kind: WorkflowKind.EDIT, x: 500, y: 50 },
+  { id: 'caption', label: 'Caption', kind: WorkflowKind.TEXT, x: 500, y: 230 },
+  { id: 'video', label: 'Animate', kind: WorkflowKind.VIDEO, x: 750, y: 50 },
 ];
 
 const edgeSpecs: WorkflowEdgeSpec[] = [
@@ -72,64 +96,54 @@ const edgeSpecs: WorkflowEdgeSpec[] = [
 const DEFAULT_SELECTION = new Set(['prompt', 'reference', 'image', 'upscale', 'video']);
 
 function WorkflowNodeView({ data, selected }: NodeProps<WorkflowNode>) {
+  const outputType = OUTPUT_TYPE[data.kind];
+  const isSource = data.kind === WorkflowKind.TEXT_INPUT || data.kind === WorkflowKind.IMAGE_INPUT;
   return (
     <div className="pd-node" data-selected={selected || undefined} data-role={data.role ?? undefined}>
-      <Handle type="target" position={Position.Left} className="pd-handle" isConnectable={false} />
-      <div className="pd-node-meta">
-        <span>{KIND_LABEL[data.kind]}</span>
-        {data.role ? <span className="pd-role">{data.role}</span> : null}
+      <div className="pd-node-label">
+        <span>{data.label}</span>
+        <span className="pd-node-kind">{KIND_LABEL[data.kind]}</span>
       </div>
-      <div className="pd-node-title">{data.label}</div>
-      <Handle type="source" position={Position.Right} className="pd-handle" isConnectable={false} />
+      <div className="pd-node-card">
+        {!isSource ? <Handle type="target" position={Position.Left} className="pd-handle" data-type="any" isConnectable={false} /> : null}
+        <div className="pd-node-body" data-kind={data.kind}>
+          {data.kind === WorkflowKind.TEXT_INPUT ? <span>ceramic vase, soft light…</span> : null}
+        </div>
+        <Handle type="source" position={Position.Right} className="pd-handle" data-type={outputType} isConnectable={false} />
+      </div>
     </div>
   );
 }
 
 const nodeTypes = { workflow: WorkflowNodeView };
 
-function roleFor(id: string, plan: AppPlan): Role {
-  if (plan.inputs.includes(id)) return 'input';
-  if (plan.outputs.includes(id)) return 'output';
-  if (plan.internal.includes(id)) return 'internal';
-  if (plan.external.includes(id)) return 'external';
-  return null;
+function roleFor(id: string, plan: AppPlan): PreviewRole {
+  if (plan.inputs.includes(id)) return PreviewRole.INPUT;
+  if (plan.outputs.includes(id)) return PreviewRole.OUTPUT;
+  return PreviewRole.DIM;
 }
 
-function AppPreview({ plan, byId }: PreviewProps) {
-  if (plan.inputs.length === 0 && plan.outputs.length === 0) {
+function AppPreview({ plan, byId }: AppPreviewProps) {
+  if (plan.disabledReason) {
     return (
-      <p className="type-small text-graphite">
-        Select at least one node to preview an app. Try Prompt, Image model, and Upscale.
-      </p>
+      <div className="pd-app pd-app-empty">
+        <p className="type-small text-graphite">{plan.disabledReason}</p>
+      </div>
     );
   }
   return (
     <div className="pd-app">
-      <p className="type-mono text-graphite">app preview</p>
+      <p className="type-mono text-graphite">the app it would build</p>
       <div className="mt-3 grid gap-3">
         {plan.inputs.map((id) => {
           const spec = byId.get(id);
           if (!spec) return null;
-          if (spec.kind === WorkflowKind.IMAGE_INPUT) {
-            return (
-              <div key={id} className="pd-field pd-field-upload">
-                <span className="pd-field-label">{spec.label}</span>
-                <span className="type-small text-graphite">Upload an image</span>
-              </div>
-            );
-          }
-          if (spec.kind === WorkflowKind.TEXT_INPUT) {
-            return (
-              <div key={id} className="pd-field">
-                <span className="pd-field-label">{spec.label}</span>
-                <span className="pd-field-input">Describe it…</span>
-              </div>
-            );
-          }
           return (
-            <div key={id} className="pd-field pd-field-fixed">
+            <div key={id} className={`pd-field ${spec.kind === WorkflowKind.IMAGE_INPUT ? 'pd-field-upload' : ''}`}>
               <span className="pd-field-label">{spec.label}</span>
-              <span className="type-small text-graphite">Runs with its saved settings</span>
+              <span className="pd-field-input">
+                {spec.kind === WorkflowKind.IMAGE_INPUT ? 'Upload an image' : 'Describe it…'}
+              </span>
             </div>
           );
         })}
@@ -140,8 +154,8 @@ function AppPreview({ plan, byId }: PreviewProps) {
           const spec = byId.get(id);
           if (!spec) return null;
           return (
-            <div key={id} className="pd-result" data-kind={spec.kind}>
-              <span className="type-mono">{spec.kind === WorkflowKind.VIDEO ? 'video result' : `${spec.kind} result`}</span>
+            <div key={id} className="pd-result" data-type={OUTPUT_TYPE[spec.kind]}>
+              <span className="type-mono">{OUTPUT_TYPE[spec.kind]} result</span>
               <span className="pd-field-label">{spec.label}</span>
             </div>
           );
@@ -161,30 +175,37 @@ export default function PlannerDemo() {
       data: { label: spec.label, kind: spec.kind, role: null },
     })),
   );
+  const [hovering, setHovering] = useState(false);
+  const [pinned, setPinned] = useState(false);
 
   const byId = useMemo(() => new Map(specs.map((spec) => [spec.id, spec])), []);
   const selected = useMemo(() => new Set(nodes.filter((node) => node.selected).map((node) => node.id)), [nodes]);
   const plan = useMemo(() => planApp({ nodes: specs, edges: edgeSpecs, selected }), [selected]);
+  const previewing = (hovering || pinned) && plan.disabledReason === null;
 
   const viewNodes = useMemo(
-    () => nodes.map((node) => ({ ...node, data: { ...node.data, role: roleFor(node.id, plan) } })),
-    [nodes, plan],
+    () =>
+      nodes.map((node) => ({
+        ...node,
+        data: { ...node.data, role: previewing && selected.has(node.id) ? roleFor(node.id, plan) : null },
+      })),
+    [nodes, plan, previewing, selected],
   );
 
   const edges = useMemo<Edge[]>(
     () =>
       edgeSpecs.map((edge) => {
+        const sourceKind = byId.get(edge.source)?.kind ?? WorkflowKind.IMAGE;
         const inside = selected.has(edge.source) && selected.has(edge.target);
-        const feeding = !selected.has(edge.source) && selected.has(edge.target);
         return {
           id: `${edge.source}-${edge.target}`,
           source: edge.source,
           target: edge.target,
           selectable: false,
-          className: inside ? 'pd-edge-inside' : feeding ? 'pd-edge-feeding' : 'pd-edge-idle',
+          className: `pd-edge pd-edge-${OUTPUT_TYPE[sourceKind]} ${inside ? 'pd-edge-inside' : ''}`,
         };
       }),
-    [selected],
+    [byId, selected],
   );
 
   const onNodesChange = useCallback((changes: NodeChange<WorkflowNode>[]) => {
@@ -200,19 +221,39 @@ export default function PlannerDemo() {
 
   return (
     <DemoFrame
-      title="Try the planner"
-      instructions="Select nodes on the canvas: click, Shift-drag to box-select, or Cmd/Ctrl-click to add. The checklist does the same. The plan and the app preview update with every change."
-      note="A simplified reconstruction of the planning idea, rebuilt for this portfolio. It is not ImagineArt’s production code."
+      title="Try Build App"
+      instructions="Select nodes: click, Shift-drag to box-select, Cmd/Ctrl-click to add, or use the checklist. Then hover or focus Build App to preview the plan on the canvas: violet for inputs, amber for outputs, everything else dims. Click it to keep the preview on."
+      note="A simplified reconstruction of the planning rules, rebuilt for this portfolio. It is not ImagineArt’s production code."
     >
       <div className="pd-layout">
         <div className="pd-canvas">
+          <div className="pd-toolbar">
+            <button
+              type="button"
+              className="pd-build"
+              aria-pressed={pinned}
+              aria-describedby="pd-build-hint"
+              disabled={plan.disabledReason !== null}
+              onMouseEnter={() => setHovering(true)}
+              onMouseLeave={() => setHovering(false)}
+              onFocus={() => setHovering(true)}
+              onBlur={() => setHovering(false)}
+              onClick={() => setPinned((value) => !value)}
+            >
+              <span className="pd-build-icon" aria-hidden="true" />
+              Build App
+            </button>
+            <span id="pd-build-hint" className="pd-build-hint">
+              {plan.disabledReason ?? (pinned ? 'Preview pinned' : 'Hover to preview')}
+            </span>
+          </div>
           <ReactFlow
             nodes={viewNodes}
             edges={edges}
             nodeTypes={nodeTypes}
             onNodesChange={onNodesChange}
             fitView
-            fitViewOptions={{ padding: 0.15 }}
+            fitViewOptions={{ padding: 0.26 }}
             selectionOnDrag
             selectionMode={SelectionMode.Partial}
             panOnDrag={false}
@@ -224,7 +265,7 @@ export default function PlannerDemo() {
             maxZoom={1.4}
             aria-label="Workflow canvas"
           >
-            <Background variant={BackgroundVariant.Dots} gap={24} size={1.2} color="rgba(23,24,21,0.22)" />
+            <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} color="rgba(244,241,232,0.1)" />
           </ReactFlow>
         </div>
 
@@ -242,33 +283,18 @@ export default function PlannerDemo() {
           </fieldset>
 
           <dl className="pd-plan" aria-live="polite">
-            <div>
+            <div data-role="input">
               <dt>Inputs</dt>
               <dd>{list(plan.inputs)}</dd>
             </div>
-            <div>
-              <dt>Results</dt>
+            <div data-role="output">
+              <dt>Outputs</dt>
               <dd>{list(plan.outputs)}</dd>
             </div>
             <div>
-              <dt>Internal steps</dt>
+              <dt>Dimmed</dt>
               <dd>{list(plan.internal)}</dd>
             </div>
-            {plan.external.length > 0 ? (
-              <div data-warning>
-                <dt>Needs from outside</dt>
-                <dd>
-                  {list(plan.external)}. Add {plan.external.length === 1 ? 'it' : 'them'} to the selection, or the app
-                  can’t run.
-                </dd>
-              </div>
-            ) : null}
-            {plan.flows > 1 ? (
-              <div data-warning>
-                <dt>Separate flows</dt>
-                <dd>This selection contains {plan.flows} unconnected flows.</dd>
-              </div>
-            ) : null}
           </dl>
 
           <AppPreview plan={plan} byId={byId} />

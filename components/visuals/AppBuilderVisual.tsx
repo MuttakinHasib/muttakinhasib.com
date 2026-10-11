@@ -1,23 +1,32 @@
 import type { ReactNode } from 'react';
-import { Dots, type Pt, Tag, VizFrame } from './primitives';
+import { Dots, type Pt, VizFrame } from './primitives';
 import { VaseArt } from './VaseArt';
 
 /**
- * App Builder, reconstructed in the visual language of a dark node-based
- * workflow editor: typed ports (text, image), node header/body/footer, a
- * selection, and the live app preview that appears on hovering "Build app".
+ * App Builder, reconstructed after the live editor. Two moments:
+ * 1. Hovering "Build App" on a selection previews the plan in place:
+ *    planned inputs wear a violet halo, outputs an amber one, the rest dims.
+ * 2. Clicking it opens the guided flow (Input → Output → Publish).
  */
 
 const PortType = {
   TEXT: 'text',
   IMAGE: 'image',
+  VIDEO: 'video',
 } as const;
 type PortType = (typeof PortType)[keyof typeof PortType];
+
+const Role = {
+  INPUT: 'input',
+  OUTPUT: 'output',
+  DIM: 'dim',
+  NONE: 'none',
+} as const;
+type Role = (typeof Role)[keyof typeof Role];
 
 interface PortSpec {
   y: number;
   type: PortType;
-  active?: boolean;
 }
 
 interface FlowNodeProps {
@@ -28,7 +37,7 @@ interface FlowNodeProps {
   icon: 'text' | 'image' | 'video';
   name: string;
   meta?: string;
-  dim?: boolean;
+  role?: Role;
   inputs?: PortSpec[];
   outputs?: PortSpec[];
   footer?: 'references' | 'add-images';
@@ -46,27 +55,38 @@ interface TypedWireProps {
   dim?: boolean;
 }
 
-interface PreviewFieldProps {
-  x: number;
-  y: number;
+interface SelectionToolbarProps extends Pt {
+  compact?: boolean;
+}
+
+interface PanelProps extends Pt {
+  w: number;
+  h: number;
+  compact?: boolean;
+}
+
+interface FieldProps extends Pt {
   w: number;
   label: string;
   value: string;
-  type: PortType;
 }
 
-interface PlayButtonProps {
-  cx: number;
-  cy: number;
-}
-
-interface PreviewCardProps {
-  x: number;
-  y: number;
+interface SelectionBoxProps extends Pt {
   w: number;
   h: number;
-  arrowX: number;
-  compact?: boolean;
+}
+
+interface RoleStyle {
+  fill: string;
+  stroke: string;
+  width: number;
+  opacity: number;
+}
+
+interface ToggleRowProps extends Pt {
+  w: number;
+  label: string;
+  value: string;
 }
 
 const CANVAS = '#0f0f0f';
@@ -76,9 +96,20 @@ const PAPER = '#f4f1e8';
 const FOG = '#a9a79c';
 const INK = '#171815';
 const SIGNAL = '#c7f36b';
+const VIOLET = '#9b6dff';
+const AMBER = '#f5a524';
+
 const TYPE_COLOR: Record<PortType, string> = {
   [PortType.TEXT]: '#8ab4ff',
   [PortType.IMAGE]: '#e6a03a',
+  [PortType.VIDEO]: '#94cc7a',
+};
+
+const ROLE_STYLE: Record<Role, RoleStyle> = {
+  [Role.INPUT]: { fill: '#22163d', stroke: VIOLET, width: 2.5, opacity: 1 },
+  [Role.OUTPUT]: { fill: '#1b0e00', stroke: AMBER, width: 2.5, opacity: 1 },
+  [Role.DIM]: { fill: NODE, stroke: NODE_STROKE, width: 1, opacity: 0.32 },
+  [Role.NONE]: { fill: NODE, stroke: NODE_STROKE, width: 1, opacity: 1 },
 };
 
 function NodeIcon({ x, y, icon }: NodeIconProps) {
@@ -105,56 +136,42 @@ function NodeIcon({ x, y, icon }: NodeIconProps) {
   );
 }
 
-function FlowNode({ x, y, w, h, icon, name, meta, dim, inputs = [], outputs = [], footer, children }: FlowNodeProps) {
+/** Label sits above the card, as in the editor; the card carries the halo. */
+function FlowNode({ x, y, w, h, icon, name, meta, role = Role.NONE, inputs = [], outputs = [], footer, children }: FlowNodeProps) {
+  const style = ROLE_STYLE[role];
   return (
-    <g opacity={dim ? 0.38 : 1}>
-      <rect x={x} y={y} width={w} height={h} rx={10} fill={NODE} stroke={NODE_STROKE} />
-      <NodeIcon x={x + 14} y={y + 14} icon={icon} />
-      <text x={x + 32} y={y + 24} className="v-label" fill={PAPER}>
+    <g opacity={style.opacity}>
+      <NodeIcon x={x + 2} y={y - 18} icon={icon} />
+      <text x={x + 20} y={y - 9} className="v-small" fill={PAPER}>
         {name}
       </text>
       {meta ? (
-        <text x={x + w - 14} y={y + 24} textAnchor="end" className="v-kicker" fill={FOG}>
+        <text x={x + w} y={y - 9} textAnchor="end" className="v-kicker" fill={FOG}>
           {meta}
         </text>
       ) : null}
+      <rect x={x} y={y} width={w} height={h} rx={12} fill={style.fill} stroke={style.stroke} strokeWidth={style.width} />
       {children}
       {footer === 'references' ? (
         <g>
-          <rect x={x + 12} y={y + h - 34} width={92} height={24} rx={12} fill="#262624" />
-          <text x={x + 24} y={y + h - 17} className="v-kicker" fill={FOG}>
+          <rect x={x + 10} y={y + h - 32} width={88} height={22} rx={11} fill="#262624" />
+          <text x={x + 21} y={y + h - 17} className="v-kicker" fill={FOG}>
             References
           </text>
-          <circle cx={x + w - 24} cy={y + h - 22} r={11} fill={PAPER} />
-          <path d={`M${x + w - 28} ${y + h - 27}l9 5-9 5z`} fill={INK} />
+          <circle cx={x + w - 21} cy={y + h - 21} r={10} fill={PAPER} />
+          <path d={`M${x + w - 21} ${y + h - 26}v10M${x + w - 25} ${y + h - 22}l4-4 4 4`} stroke={INK} strokeWidth="1.5" fill="none" />
         </g>
       ) : null}
       {footer === 'add-images' ? (
-        <text x={x + 14} y={y + h - 16} className="v-kicker" fill={FOG}>
+        <text x={x + 14} y={y + h - 14} className="v-kicker" fill={FOG}>
           + Add more images
         </text>
       ) : null}
       {inputs.map((port) => (
-        <circle
-          key={`in-${port.y}`}
-          cx={x}
-          cy={y + port.y}
-          r={5.5}
-          fill={port.active ? TYPE_COLOR[port.type] : NODE}
-          stroke={TYPE_COLOR[port.type]}
-          strokeWidth={2}
-        />
+        <circle key={`in-${port.y}`} cx={x} cy={y + port.y} r={5.5} fill={CANVAS} stroke={TYPE_COLOR[port.type]} strokeWidth={2} />
       ))}
       {outputs.map((port) => (
-        <circle
-          key={`out-${port.y}`}
-          cx={x + w}
-          cy={y + port.y}
-          r={5.5}
-          fill={port.active ? TYPE_COLOR[port.type] : NODE}
-          stroke={TYPE_COLOR[port.type]}
-          strokeWidth={2}
-        />
+        <circle key={`out-${port.y}`} cx={x + w} cy={y + port.y} r={5.5} fill={TYPE_COLOR[port.type]} stroke={TYPE_COLOR[port.type]} strokeWidth={2} />
       ))}
     </g>
   );
@@ -173,30 +190,6 @@ function TypedWire({ from, to, type, dim }: TypedWireProps) {
   );
 }
 
-function PreviewField({ x, y, w, label, value, type }: PreviewFieldProps) {
-  return (
-    <g>
-      <circle cx={x + 4} cy={y - 5} r={4} fill={TYPE_COLOR[type]} stroke={INK} strokeWidth="1" />
-      <text x={x + 14} y={y} className="v-label" fill={INK}>
-        {label}
-      </text>
-      <rect x={x} y={y + 10} width={w} height={42} rx={6} fill="#fbfaf6" stroke={INK} />
-      <text x={x + 14} y={y + 36} className="v-body" fill="#5c5b54">
-        {value}
-      </text>
-    </g>
-  );
-}
-
-function PlayButton({ cx, cy }: PlayButtonProps) {
-  return (
-    <g>
-      <circle cx={cx} cy={cy} r={20} fill={PAPER} stroke={INK} />
-      <path d={`M${cx - 6} ${cy - 9}L${cx + 10} ${cy}L${cx - 6} ${cy + 9}Z`} fill={INK} />
-    </g>
-  );
-}
-
 function Cursor({ x, y }: Pt) {
   return (
     <path
@@ -210,83 +203,165 @@ function Cursor({ x, y }: Pt) {
   );
 }
 
-/** The live preview that appears while hovering "Build app" over a selection. */
-function PreviewCard({ x, y, w, h, arrowX, compact }: PreviewCardProps) {
+/** The toolbar that floats over a multi-selection, with its Build App tooltip. */
+function SelectionToolbar({ x, y, compact }: SelectionToolbarProps) {
+  const iconCount = compact ? 2 : 4;
+  const buildX = x + 60 + iconCount * 30;
+  const width = buildX - x + 236;
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={44} rx={22} fill={NODE} stroke={NODE_STROKE} />
+      <circle cx={x + 24} cy={y + 22} r={9} fill={SIGNAL} />
+      {Array.from({ length: iconCount }, (_, index) => (
+        <rect key={index} x={x + 52 + index * 30} y={y + 15} width={14} height={14} rx={3} fill="none" stroke={FOG} strokeWidth="1.3" />
+      ))}
+      <line x1={buildX - 6} y1={y + 12} x2={buildX - 6} y2={y + 32} stroke={NODE_STROKE} />
+      <rect x={buildX} y={y + 6} width={112} height={32} rx={16} fill="#2c2c29" />
+      <rect x={buildX + 12} y={y + 15} width={13} height={13} rx={3} fill="none" stroke={PAPER} strokeWidth="1.4" />
+      <text x={buildX + 32} y={y + 27} className="v-label" fill={PAPER}>
+        Build App
+      </text>
+      <text x={buildX + 126} y={y + 27} className="v-label" fill={PAPER}>
+        Run Selected
+      </text>
+      <rect x={buildX - 80} y={y - 58} width={272} height={46} rx={10} fill={PAPER} />
+      <text x={buildX + 56} y={y - 39} textAnchor="middle" className="v-small" fill={INK}>
+        Turns the selection into an app
+      </text>
+      <text x={buildX + 56} y={y - 21} textAnchor="middle" className="v-small" fill={INK}>
+        you can share or run again.
+      </text>
+      <Cursor x={buildX + 78} y={y + 24} />
+    </g>
+  );
+}
+
+function Legend({ x, y }: Pt) {
+  return (
+    <g>
+      <rect x={x} y={y} width={14} height={14} rx={4} fill="#22163d" stroke={VIOLET} strokeWidth="2" />
+      <text x={x + 22} y={y + 12} className="v-kicker" fill={PAPER}>
+        planned input
+      </text>
+      <rect x={x + 150} y={y} width={14} height={14} rx={4} fill="#1b0e00" stroke={AMBER} strokeWidth="2" />
+      <text x={x + 172} y={y + 12} className="v-kicker" fill={PAPER}>
+        planned output
+      </text>
+      <rect x={x + 310} y={y} width={14} height={14} rx={4} fill={NODE} stroke={NODE_STROKE} opacity={0.5} />
+      <text x={x + 332} y={y + 12} className="v-kicker" fill={FOG}>
+        dimmed: internal step
+      </text>
+    </g>
+  );
+}
+
+function Field({ x, y, w, label, value }: FieldProps) {
+  return (
+    <g>
+      <text x={x} y={y} className="v-kicker" fill={FOG}>
+        {label}
+      </text>
+      <rect x={x} y={y + 8} width={w} height={36} rx={8} fill="#232321" stroke={NODE_STROKE} />
+      <text x={x + 12} y={y + 31} className="v-small" fill={PAPER}>
+        {value}
+      </text>
+    </g>
+  );
+}
+
+function ToggleRow({ x, y, w, label, value }: ToggleRowProps) {
+  return (
+    <g>
+      <text x={x} y={y + 14} className="v-small" fill={PAPER}>
+        {label}
+      </text>
+      <text x={x + w - 52} y={y + 14} textAnchor="end" className="v-kicker" fill={FOG}>
+        {value}
+      </text>
+      <rect x={x + w - 40} y={y} width={40} height={22} rx={11} fill={SIGNAL} />
+      <circle cx={x + w - 11} cy={y + 11} r={8} fill={INK} />
+    </g>
+  );
+}
+
+/** The App Builder sidebar after clicking: three ordered steps, Publish active. */
+function BuilderPanel({ x, y, w, h, compact }: PanelProps) {
+  const steps = ['Input', 'Output', 'Publish'];
   const inner = w - 40;
   return (
     <g>
-      <path d={`M${arrowX - 10} ${y}L${arrowX} ${y - 10}L${arrowX + 10} ${y}Z`} fill={PAPER} />
-      <rect x={x} y={y} width={w} height={h} rx={12} fill={PAPER} />
-      <circle cx={x + 26} cy={y + 27} r={4.5} fill={SIGNAL} stroke={INK} />
-      <text x={x + 38} y={y + 31} className="v-kicker" fill="#5c5b54">
-        live preview
+      <rect x={x} y={y} width={w} height={h} rx={14} fill="#171716" stroke={NODE_STROKE} />
+      <text x={x + 20} y={y + 34} className="v-label" fill={PAPER}>
+        App Builder
       </text>
-      <text x={x + 20} y={y + 70} className="v-display" fill={INK}>
-        Vase studio
+      <text x={x + w - 20} y={y + 34} textAnchor="end" className="v-kicker" fill={FOG}>
+        after the click
       </text>
+      {steps.map((step, index) => {
+        const sx = x + 20 + index * (inner / 3);
+        const done = index < 2;
+        return (
+          <g key={step}>
+            {index > 0 ? <line x1={sx - inner / 3 + 88} y1={y + 66} x2={sx - 4} y2={y + 66} stroke={done ? SIGNAL : NODE_STROKE} strokeWidth="1.5" /> : null}
+            <circle cx={sx + 11} cy={y + 66} r={11} fill={done ? SIGNAL : PAPER} />
+            <text x={sx + 11} y={y + 70} textAnchor="middle" className="v-kicker" fill={INK}>
+              {done ? '✓' : '3'}
+            </text>
+            <text x={sx + 28} y={y + 70} className="v-kicker" fill={done ? FOG : PAPER}>
+              {step}
+            </text>
+          </g>
+        );
+      })}
       {compact ? (
         <>
-          <PreviewField x={x + 20} y={y + 112} w={inner / 2 - 8} label="Prompt" value="ceramic vase…" type={PortType.TEXT} />
-          <PreviewField x={x + 20 + inner / 2 + 8} y={y + 112} w={inner / 2 - 8} label="Reference" value="vase-ref.jpg" type={PortType.IMAGE} />
-          <rect x={x + 20} y={y + 186} width={inner / 2 - 8} height={46} rx={6} fill={INK} />
-          <text x={x + 20 + (inner / 2 - 8) / 2} y={y + 215} textAnchor="middle" className="v-label" fill={PAPER}>
-            Run app
+          <Field x={x + 20} y={y + 94} w={inner / 2 - 8} label="App name" value="Vase studio" />
+          <ToggleRow x={x + 20 + inner / 2 + 8} y={y + 110} w={inner / 2 - 8} label="Monetize" value="on" />
+          <rect x={x + 20} y={y + h - 50} width={inner / 2 - 8} height={36} rx={18} fill="#262624" />
+          <text x={x + 20 + (inner / 2 - 8) / 2} y={y + h - 27} textAnchor="middle" className="v-label" fill={PAPER}>
+            Test run
           </text>
-          <rect x={x + 20 + inner / 2 + 8} y={y + 186} width={inner / 2 - 8} height={h - 206} rx={6} fill="#dfdbcf" />
-          <PlayButton cx={x + 20 + inner * 0.75 + 4} cy={y + 186 + (h - 206) / 2} />
+          <rect x={x + 20 + inner / 2 + 8} y={y + h - 50} width={inner / 2 - 8} height={36} rx={18} fill={PAPER} />
+          <text x={x + 20 + inner * 0.75 + 4} y={y + h - 27} textAnchor="middle" className="v-label" fill={INK}>
+            Publish app
+          </text>
         </>
       ) : (
         <>
-          <text x={x + 20} y={y + 94} className="v-body" fill="#5c5b54">
-            Inputs and result found by the planner
+          <VaseArt x={x + 20} y={y + 96} w={inner} h={150} variant="generated" />
+          <circle cx={x + w / 2} cy={y + 171} r={18} fill={PAPER} />
+          <path d={`M${x + w / 2 - 5} ${y + 162}L${x + w / 2 + 9} ${y + 171}L${x + w / 2 - 5} ${y + 180}Z`} fill={INK} />
+          <Field x={x + 20} y={y + 274} w={inner} label="App name" value="Vase studio" />
+          <Field x={x + 20} y={y + 338} w={inner} label="Description" value="Product photo in, 5-second clip out." />
+          <ToggleRow x={x + 20} y={y + 404} w={inner} label="Monetize runs" value="on" />
+          <ToggleRow x={x + 20} y={y + 440} w={inner} label="Public" value="listed" />
+          <ToggleRow x={x + 20} y={y + 476} w={inner} label="Allow remix" value="on" />
+          <rect x={x + 20} y={y + h - 64} width={inner / 2 - 8} height={42} rx={21} fill="#262624" />
+          <text x={x + 20 + (inner / 2 - 8) / 2} y={y + h - 38} textAnchor="middle" className="v-label" fill={PAPER}>
+            Test run
           </text>
-          <PreviewField x={x + 20} y={y + 136} w={inner} label="Prompt" value="ceramic vase, soft light" type={PortType.TEXT} />
-          <circle cx={x + 24} cy={y + 211} r={4} fill={TYPE_COLOR[PortType.IMAGE]} stroke={INK} strokeWidth="1" />
-          <text x={x + 34} y={y + 216} className="v-label" fill={INK}>
-            Reference
+          <rect x={x + 20 + inner / 2 + 8} y={y + h - 64} width={inner / 2 - 8} height={42} rx={21} fill={PAPER} />
+          <text x={x + 20 + inner * 0.75 + 4} y={y + h - 38} textAnchor="middle" className="v-label" fill={INK}>
+            Publish app
           </text>
-          <rect x={x + 20} y={y + 226} width={inner} height={84} rx={6} fill="#fbfaf6" stroke="#5c5b54" strokeDasharray="5 4" />
-          <VaseArt x={x + 32} y={y + 238} w={60} h={60} />
-          <text x={x + 106} y={y + 264} className="v-body" fill={INK}>
-            vase-ref.jpg
-          </text>
-          <text x={x + 106} y={y + 286} className="v-small" fill="#5c5b54">
-            Replace
-          </text>
-          <rect x={x + 20} y={y + 328} width={inner} height={44} rx={6} fill={INK} />
-          <text x={x + w / 2} y={y + 356} textAnchor="middle" className="v-label" fill={PAPER}>
-            Run app
-          </text>
-          <text x={x + 20} y={y + 404} className="v-label" fill={INK}>
-            Result
-          </text>
-          <rect x={x + 20} y={y + 414} width={inner} height={h - 434} rx={6} fill="#dfdbcf" />
-          <PlayButton cx={x + w / 2} cy={y + 414 + (h - 434) / 2} />
         </>
       )}
     </g>
   );
 }
 
-function Toolbar({ x, y }: Pt) {
-  const icons = 8;
+function SelectionBox({ x, y, w, h }: SelectionBoxProps) {
+  const corners: [number, number][] = [
+    [x, y],
+    [x + w, y],
+    [x, y + h],
+    [x + w, y + h],
+  ];
   return (
     <g>
-      <rect x={x} y={y} width={56 + icons * 34} height={44} rx={22} fill={NODE} stroke={NODE_STROKE} />
-      <circle cx={x + 24} cy={y + 22} r={14} fill={PAPER} />
-      <path d={`M${x + 19} ${y + 15}l11 6-5 1.5-1.5 5z`} fill={INK} />
-      {Array.from({ length: icons }, (_, index) => (
-        <rect
-          key={index}
-          x={x + 52 + index * 34}
-          y={y + 15}
-          width={14}
-          height={14}
-          rx={3}
-          fill="none"
-          stroke={FOG}
-          strokeWidth="1.3"
-        />
+      <rect x={x} y={y} width={w} height={h} fill="none" stroke="rgba(244,241,232,0.55)" strokeWidth="1" />
+      {corners.map(([cx, cy]) => (
+        <rect key={`${cx}-${cy}`} x={cx - 4} y={cy - 4} width={8} height={8} fill={PAPER} />
       ))}
     </g>
   );
@@ -298,114 +373,77 @@ function Wide() {
       <Dots width={1200} height={760} color="rgba(244,241,232,0.08)" background={CANVAS} />
 
       {/* Editor chrome */}
-      <rect x={60} y={22} width={232} height={40} rx={20} fill={NODE} stroke={NODE_STROKE} />
-      <text x={80} y={47} className="v-label" fill={PAPER}>
+      <rect x={40} y={22} width={200} height={40} rx={20} fill={NODE} stroke={NODE_STROKE} />
+      <text x={60} y={47} className="v-label" fill={PAPER}>
         Vase studio
       </text>
-      <path d="M262 46a5 5 0 0 1 1-9.8 7 7 0 0 1 13.5 2.3 4 4 0 0 1-.5 7.5z" fill="none" stroke={FOG} strokeWidth="1.3" />
-      <rect x={898} y={22} width={134} height={40} rx={20} fill={NODE} stroke={SIGNAL} strokeWidth={2} />
-      <text x={965} y={47} textAnchor="middle" className="v-label" fill={PAPER}>
-        Build app
-      </text>
-      <rect x={1044} y={22} width={92} height={40} rx={20} fill={PAPER} />
-      <text x={1090} y={47} textAnchor="middle" className="v-label" fill={INK}>
-        Share
-      </text>
-      <Cursor x={990} y={46} />
-      {[0, 1, 2, 3].map((index) => (
-        <rect key={index} x={18} y={110 + index * 46} width={18} height={18} rx={4} fill="none" stroke={FOG} strokeWidth="1.3" />
-      ))}
 
-      {/* Selection */}
-      <rect x={44} y={128} width={850} height={396} rx={14} fill="rgba(199,243,107,0.04)" stroke={SIGNAL} strokeWidth={1.5} strokeDasharray="8 6" />
-      <text x={56} y={118} className="v-kicker" fill={SIGNAL}>
-        5 nodes selected
-      </text>
+      <SelectionToolbar x={184} y={112} />
+      <SelectionBox x={40} y={184} w={736} h={384} />
 
-      {/* Typed wires: text in blue, images in amber */}
-      <TypedWire from={{ x: 240, y: 226 }} to={{ x: 290, y: 278 }} type={PortType.TEXT} />
-      <TypedWire from={{ x: 240, y: 412 }} to={{ x: 290, y: 308 }} type={PortType.IMAGE} />
-      <TypedWire from={{ x: 480, y: 330 }} to={{ x: 530, y: 214 }} type={PortType.IMAGE} />
-      <TypedWire from={{ x: 680, y: 214 }} to={{ x: 730, y: 286 }} type={PortType.IMAGE} />
-      <TypedWire from={{ x: 480, y: 330 }} to={{ x: 530, y: 610 }} type={PortType.IMAGE} dim />
+      {/* Wires keep their data type: text blue, image amber, video green */}
+      <TypedWire from={{ x: 236, y: 262 }} to={{ x: 300, y: 300 }} type={PortType.TEXT} />
+      <TypedWire from={{ x: 236, y: 428 }} to={{ x: 300, y: 330 }} type={PortType.IMAGE} />
+      <TypedWire from={{ x: 486, y: 352 }} to={{ x: 548, y: 352 }} type={PortType.IMAGE} />
+      <TypedWire from={{ x: 486, y: 352 }} to={{ x: 548, y: 650 }} type={PortType.IMAGE} dim />
 
-      {/* Nodes */}
-      <FlowNode x={60} y={166} w={180} h={120} icon="text" name="Prompt" meta="38 chars" outputs={[{ y: 60, type: PortType.TEXT, active: true }]}>
-        <text x={74} y={222} className="v-body" fill={FOG}>
+      <FlowNode x={60} y={220} w={176} h={96} icon="text" name="Prompt" role={Role.INPUT} outputs={[{ y: 42, type: PortType.TEXT }]}>
+        <text x={74} y={250} className="v-small" fill={PAPER}>
           ceramic vase on
         </text>
-        <text x={74} y={242} className="v-body" fill={FOG}>
+        <text x={74} y={270} className="v-small" fill={PAPER}>
           travertine, soft light
         </text>
       </FlowNode>
-      <FlowNode x={60} y={314} w={180} h={196} icon="image" name="Image" footer="add-images" outputs={[{ y: 98, type: PortType.IMAGE, active: true }]}>
-        <VaseArt x={74} y={352} w={152} h={112} />
+      <FlowNode x={60} y={356} w={176} h={180} icon="image" name="Image" role={Role.INPUT} footer="add-images" outputs={[{ y: 72, type: PortType.IMAGE }]}>
+        <VaseArt x={72} y={368} w={152} h={128} />
       </FlowNode>
       <FlowNode
-        x={290}
-        y={194}
-        w={190}
-        h={240}
+        x={300}
+        y={244}
+        w={186}
+        h={216}
         icon="image"
         name="Image 1"
         meta="model"
+        role={Role.DIM}
         footer="references"
         inputs={[
-          { y: 84, type: PortType.TEXT },
-          { y: 114, type: PortType.IMAGE },
+          { y: 56, type: PortType.TEXT },
+          { y: 86, type: PortType.IMAGE },
         ]}
-        outputs={[{ y: 136, type: PortType.IMAGE }]}
+        outputs={[{ y: 108, type: PortType.IMAGE }]}
       >
-        <VaseArt x={304} y={234} w={162} h={150} variant="generated" />
+        <VaseArt x={310} y={254} w={166} h={160} variant="generated" />
       </FlowNode>
-      <FlowNode x={530} y={160} w={150} h={108} icon="image" name="Upscale" meta="×2" inputs={[{ y: 54, type: PortType.IMAGE }]} outputs={[{ y: 54, type: PortType.IMAGE }]}>
-        <text x={544} y={222} className="v-small" fill={FOG}>
-          2048 × 2048
+      <FlowNode
+        x={548}
+        y={244}
+        w={206}
+        h={216}
+        icon="video"
+        name="Animate"
+        meta="5s"
+        role={Role.OUTPUT}
+        footer="references"
+        inputs={[{ y: 108, type: PortType.IMAGE }]}
+        outputs={[{ y: 108, type: PortType.VIDEO }]}
+      >
+        <VaseArt x={558} y={254} w={186} h={160} variant="generated" />
+        <circle cx={651} cy={334} r={18} fill="rgba(244,241,232,0.9)" />
+        <path d="M645 325l15 9-15 9z" fill={INK} />
+      </FlowNode>
+
+      {/* Outside the selection: untouched by the plan */}
+      <FlowNode x={548} y={612} w={190} h={78} icon="text" name="Caption" inputs={[{ y: 38, type: PortType.IMAGE }]}>
+        <text x={562} y={656} className="v-small" fill={FOG}>
+          not in the selection
         </text>
       </FlowNode>
-      <FlowNode x={730} y={190} w={150} h={196} icon="video" name="Animate" meta="5s" footer="references" inputs={[{ y: 96, type: PortType.IMAGE }]} outputs={[{ y: 96, type: PortType.IMAGE, active: true }]}>
-        <VaseArt x={744} y={226} w={122} h={110} variant="generated" />
-        <path d="M798 270l16 11-16 11z" fill={PAPER} />
-      </FlowNode>
-      <FlowNode x={530} y={560} w={150} h={100} icon="text" name="Caption" dim inputs={[{ y: 50, type: PortType.IMAGE }]}>
-        <text x={544} y={620} className="v-small" fill={FOG}>
-          not in selection
-        </text>
-      </FlowNode>
 
-      {/* What the planner derived */}
-      <Tag x={60} y={140} label="input" fill={SIGNAL} color={INK} />
-      <Tag x={60} y={288} label="input" fill={SIGNAL} color={INK} />
-      <Tag x={290} y={168} label="internal" fill="#2d2e29" color={FOG} stroke="#45463f" />
-      <Tag x={530} y={134} label="internal" fill="#2d2e29" color={FOG} stroke="#45463f" />
-      <Tag x={730} y={164} label="output" fill={SIGNAL} color={INK} />
+      <Legend x={40} y={716} />
 
-      {/* A sticky note, the way creators document workflows */}
-      <rect x={60} y={556} width={210} height={108} rx={4} fill="#e8c46a" />
-      <text x={74} y={582} className="v-label" fill={INK}>
-        How it works
-      </text>
-      <text x={74} y={606} className="v-small" fill={INK}>
-        Drop a product photo and a
-      </text>
-      <text x={74} y={626} className="v-small" fill={INK}>
-        prompt. The app returns a
-      </text>
-      <text x={74} y={646} className="v-small" fill={INK}>
-        five-second clip.
-      </text>
-
-      <PreviewCard x={900} y={84} w={280} h={600} arrowX={965} />
-
-      {/* Canvas controls */}
-      <rect x={60} y={700} width={150} height={40} rx={20} fill={NODE} stroke={NODE_STROKE} />
-      <text x={80} y={725} className="v-kicker" fill={FOG}>
-        ↶ ↷
-      </text>
-      <text x={150} y={725} className="v-kicker" fill={PAPER}>
-        64%
-      </text>
-      <Toolbar x={346} y={698} />
+      <BuilderPanel x={812} y={84} w={368} h={640} />
     </>
   );
 }
@@ -414,59 +452,43 @@ function Narrow() {
   return (
     <>
       <Dots width={600} height={760} color="rgba(244,241,232,0.08)" background={CANVAS} />
-      <rect x={24} y={20} width={240} height={40} rx={20} fill={NODE} stroke={NODE_STROKE} />
-      <text x={44} y={46} className="v-label" fill={PAPER}>
-        Vase studio
-      </text>
+      <SelectionToolbar x={56} y={78} compact />
+      <SelectionBox x={24} y={146} w={552} h={334} />
 
-      <rect x={24} y={78} width={552} height={300} rx={14} fill="rgba(199,243,107,0.04)" stroke={SIGNAL} strokeWidth={1.5} strokeDasharray="8 6" />
-      <text x={556} y={102} textAnchor="end" className="v-kicker" fill={SIGNAL}>
-        4 nodes selected
-      </text>
+      <TypedWire from={{ x: 264, y: 220 }} to={{ x: 324, y: 222 }} type={PortType.TEXT} />
+      <TypedWire from={{ x: 264, y: 360 }} to={{ x: 324, y: 246 }} type={PortType.IMAGE} />
+      <path d="M436 300V330" stroke={TYPE_COLOR[PortType.IMAGE]} strokeWidth={2} />
 
-      <TypedWire from={{ x: 268, y: 168 }} to={{ x: 324, y: 160 }} type={PortType.TEXT} />
-      <TypedWire from={{ x: 268, y: 312 }} to={{ x: 324, y: 190 }} type={PortType.IMAGE} />
-      <path d="M440 236V262" stroke={TYPE_COLOR[PortType.IMAGE]} strokeWidth={2} />
-
-      <FlowNode x={44} y={118} w={224} h={100} icon="text" name="Prompt" meta="38 chars" outputs={[{ y: 50, type: PortType.TEXT, active: true }]}>
-        <text x={58} y={180} className="v-body" fill={FOG}>
+      <FlowNode x={44} y={182} w={220} h={78} icon="text" name="Prompt" role={Role.INPUT} outputs={[{ y: 38, type: PortType.TEXT }]}>
+        <text x={58} y={226} className="v-small" fill={PAPER}>
           ceramic vase, soft light
         </text>
       </FlowNode>
-      <FlowNode x={44} y={248} w={224} h={128} icon="image" name="Image" outputs={[{ y: 64, type: PortType.IMAGE, active: true }]}>
-        <VaseArt x={58} y={282} w={196} h={80} />
+      <FlowNode x={44} y={300} w={220} h={160} icon="image" name="Image" role={Role.INPUT} outputs={[{ y: 60, type: PortType.IMAGE }]}>
+        <VaseArt x={56} y={312} w={196} h={136} />
       </FlowNode>
       <FlowNode
         x={324}
-        y={118}
-        w={232}
+        y={182}
+        w={224}
         h={118}
         icon="image"
         name="Image 1"
         meta="model"
+        role={Role.DIM}
         inputs={[
-          { y: 42, type: PortType.TEXT },
-          { y: 72, type: PortType.IMAGE },
+          { y: 40, type: PortType.TEXT },
+          { y: 64, type: PortType.IMAGE },
         ]}
       >
-        <VaseArt x={338} y={150} w={204} h={72} variant="generated" />
+        <VaseArt x={336} y={194} w={200} h={94} variant="generated" />
       </FlowNode>
-      <FlowNode x={324} y={262} w={232} h={102} icon="video" name="Animate" meta="5s">
-        <VaseArt x={338} y={294} w={204} h={56} variant="generated" />
+      <FlowNode x={324} y={348} w={224} h={112} icon="video" name="Animate" meta="5s" role={Role.OUTPUT}>
+        <VaseArt x={336} y={360} w={200} h={88} variant="generated" />
       </FlowNode>
-      <circle cx={440} cy={236} r={5.5} fill={NODE} stroke={TYPE_COLOR[PortType.IMAGE]} strokeWidth={2} />
-      <circle cx={440} cy={262} r={5.5} fill={NODE} stroke={TYPE_COLOR[PortType.IMAGE]} strokeWidth={2} />
 
-      <Tag x={44} y={92} label="input" fill={SIGNAL} color={INK} />
-      <Tag x={44} y={222} label="input" fill={SIGNAL} color={INK} />
-      <Tag x={324} y={238} label="output" fill={SIGNAL} color={INK} />
-
-      <rect x={372} y={396} width={204} height={44} rx={22} fill={NODE} stroke={SIGNAL} strokeWidth={2} />
-      <text x={474} y={424} textAnchor="middle" className="v-label" fill={PAPER}>
-        Build app
-      </text>
-      <Cursor x={520} y={420} />
-      <PreviewCard x={24} y={462} w={552} h={276} arrowX={474} compact />
+      <Legend x={24} y={500} />
+      <BuilderPanel x={24} y={536} w={552} h={204} compact />
     </>
   );
 }
@@ -474,7 +496,7 @@ function Narrow() {
 export function AppBuilderVisual() {
   return (
     <VizFrame
-      label="Reconstruction of App Builder in a dark workflow editor: five selected nodes connected by typed wires (blue for text, amber for images), the planner marking Prompt and Image as inputs and Animate as the output, and the live app preview shown while hovering Build app, with Prompt and Reference fields, a Run app button, and a video result."
+      label="Reconstruction of App Builder. Hovering Build App on a multi-node selection previews the plan in place: Prompt and Image glow violet as planned inputs, Animate glows amber as the planned output, and the internal Image step dims. Clicking opens the App Builder sidebar with Input, Output, and Publish steps, app name, monetization, visibility, remix, a test run, and Publish app."
       wide={<Wide />}
       narrow={<Narrow />}
     />

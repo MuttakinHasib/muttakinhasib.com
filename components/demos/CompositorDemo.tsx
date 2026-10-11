@@ -8,7 +8,9 @@ const BlendMode = {
   MULTIPLY: 'multiply',
   SCREEN: 'screen',
   OVERLAY: 'overlay',
-  DIFFERENCE: 'difference',
+  DARKEN: 'darken',
+  LIGHTEN: 'lighten',
+  COLOR_DODGE: 'color-dodge',
 } as const;
 type BlendMode = (typeof BlendMode)[keyof typeof BlendMode];
 
@@ -395,7 +397,7 @@ export default function CompositorDemo() {
               ? 'Showing an optimistic preview while the fill generates…'
               : maskUses > 0
                 ? `Fill placed. The mask has been used ${maskUses} ${maskUses === 1 ? 'time' : 'times'}.`
-                : 'The pink mask marks where a fill will go.'}
+                : 'The lavender mask marks where a fill will go.'}
           </p>
           <p className="type-mono mt-4 text-graphite">
             history {history.past.length} / redo {history.future.length}

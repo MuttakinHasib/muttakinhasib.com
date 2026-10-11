@@ -1,293 +1,322 @@
 import { useId } from 'react';
-import { Tag, VizFrame } from './primitives';
+import { Dots, type Pt, VizFrame } from './primitives';
 import { VaseArt } from './VaseArt';
 
-interface LayerRowProps {
-  y: number;
-  x: number;
+/**
+ * Generative Fill and Compositor, reconstructed after the live editors:
+ * Generative Fill edits in place on the canvas (the rest of the graph blurs),
+ * with a lavender mask for inpainting and a framed extension for outpainting.
+ * Compositor opens a layers / artboard / properties editor.
+ */
+
+interface ToolbarProps extends Pt {
+  mode: string;
+  w: number;
+}
+
+interface LayerRowProps extends Pt {
   w: number;
   name: string;
-  detail: string;
+  badge?: string;
   selected?: boolean;
-  thumb: 'text' | 'image' | 'shadow' | 'mask' | 'background';
+  icon: 'artboard' | 'text' | 'image';
 }
 
-interface HandlesProps {
-  x: number;
-  y: number;
+interface PropFieldProps extends Pt {
+  w: number;
+  prefix: string;
+  value: string;
+}
+
+interface CompositorProps extends Pt {
   w: number;
   h: number;
+  compact?: boolean;
 }
 
-interface IconProps {
-  x: number;
-  y: number;
+interface PromptPillProps extends Pt {
+  w: number;
 }
 
-interface ThumbProps extends IconProps {
-  kind: LayerRowProps['thumb'];
+interface MaskStrokeProps {
+  transform?: string;
 }
 
-interface PatternsProps {
-  checkerId: string;
-  hatchId: string;
+interface BlurDefsProps {
+  id: string;
 }
 
-const INK = '#171815';
-const MASK = '#ef5b8c';
-const GRAPHITE = '#5c5b54';
+const CANVAS = '#0f0f0f';
+const NODE = '#1b1b1a';
+const STROKE = '#30302c';
 const PAPER = '#f4f1e8';
-const WINDOW = '#fbfaf6';
+const FOG = '#a9a79c';
+const INK = '#171815';
+const MASK = 'rgba(167,139,250,0.6)';
+const OUTPAINT = '#2a1650';
+const GUIDE = '#ef5b8c';
 
-const MASK_PATH =
-  'M396 236C380 200 410 168 452 174C496 166 532 192 524 230C520 254 488 262 460 256C428 262 404 256 396 236Z';
+const BLEND_MODES = ['Normal', 'Multiply', 'Screen', 'Overlay', 'Darken', 'Lighten', 'Color Dodge'];
 
-function Eye({ x, y }: IconProps) {
-  return (
-    <g transform={`translate(${x} ${y})`}>
-      <path d="M-8 0C-4 -6 4 -6 8 0C4 6 -4 6 -8 0Z" fill="none" stroke={INK} strokeWidth="1.3" />
-      <circle r="2.4" fill={INK} />
-    </g>
-  );
-}
-
-function Thumb({ x, y, kind }: ThumbProps) {
-  return (
-    <g>
-      <rect x={x} y={y} width={30} height={30} rx={3} fill={kind === 'background' ? '#cdbfa6' : '#e6e3da'} stroke="rgba(23,24,21,0.25)" />
-      {kind === 'text' ? (
-        <text x={x + 15} y={y + 21} textAnchor="middle" className="v-label" fill={INK}>
-          T
-        </text>
-      ) : null}
-      {kind === 'image' ? <path d={`M${x + 11} ${y + 25}C${x + 6} ${y + 20} ${x + 7} ${y + 11} ${x + 12} ${y + 8}L${x + 18} ${y + 8}C${x + 23} ${y + 11} ${x + 24} ${y + 20} ${x + 19} ${y + 25}Z`} fill={PAPER} stroke={INK} strokeWidth="1" /> : null}
-      {kind === 'shadow' ? <ellipse cx={x + 15} cy={y + 20} rx={10} ry={3.5} fill="#7d705b" /> : null}
-      {kind === 'mask' ? <circle cx={x + 15} cy={y + 15} r={9} fill={MASK} opacity={0.55} /> : null}
-    </g>
-  );
-}
-
-function LayerRow({ x, y, w, name, detail, selected, thumb }: LayerRowProps) {
-  return (
-    <g>
-      {selected ? <rect x={x} y={y} width={w} height={48} rx={5} fill="#e9e6dc" stroke={INK} /> : null}
-      <Eye x={x + 22} y={y + 24} />
-      <Thumb x={x + 42} y={y + 9} kind={thumb} />
-      <text x={x + 86} y={y + 29} className="v-label" fill={INK}>
-        {name}
-      </text>
-      <text x={x + w - 14} y={y + 29} textAnchor="end" className="v-kicker" fill={GRAPHITE}>
-        {detail}
-      </text>
-    </g>
-  );
-}
-
-function Handles({ x, y, w, h }: HandlesProps) {
-  const points = [
-    [x, y],
-    [x + w / 2, y],
-    [x + w, y],
-    [x, y + h / 2],
-    [x + w, y + h / 2],
-    [x, y + h],
-    [x + w / 2, y + h],
-    [x + w, y + h],
-  ];
-  return (
-    <g>
-      <rect x={x} y={y} width={w} height={h} fill="none" stroke={INK} strokeWidth="1.25" />
-      {points.map(([px, py]) => (
-        <rect key={`${px}-${py}`} x={px - 4.5} y={py - 4.5} width={9} height={9} fill="#fff" stroke={INK} strokeWidth="1.25" />
-      ))}
-    </g>
-  );
-}
-
-function UndoRedo({ x, y }: IconProps) {
-  return (
-    <g fill="none" stroke={INK} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d={`M${x + 6} ${y - 4}L${x} ${y + 2}L${x + 6} ${y + 8}M${x} ${y + 2}H${x + 12}C${x + 18} ${y + 2} ${x + 20} ${y + 6} ${x + 20} ${y + 10}`} />
-      <path d={`M${x + 50} ${y - 4}L${x + 56} ${y + 2}L${x + 50} ${y + 8}M${x + 56} ${y + 2}H${x + 44}C${x + 38} ${y + 2} ${x + 36} ${y + 6} ${x + 36} ${y + 10}`} />
-    </g>
-  );
-}
-
-function Patterns({ checkerId, hatchId }: PatternsProps) {
+function BlurDefs({ id }: BlurDefsProps) {
   return (
     <defs>
-      <pattern id={checkerId} width="20" height="20" patternUnits="userSpaceOnUse">
-        <rect width="20" height="20" fill="#f7f6f2" />
-        <rect width="10" height="10" fill="#e6e3da" />
-        <rect x="10" y="10" width="10" height="10" fill="#e6e3da" />
-      </pattern>
-      <pattern id={hatchId} width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-        <line x1="0" y1="0" x2="0" y2="10" stroke={MASK} strokeWidth="1.2" opacity="0.45" />
-      </pattern>
+      <filter id={id} x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="6" />
+      </filter>
     </defs>
   );
 }
 
-function Wide() {
-  const checker = useId();
-  const hatch = useId();
+/** The floating toolbar Generative Fill shows above the image while editing. */
+function EditToolbar({ x, y, mode, w }: ToolbarProps) {
   return (
-    <>
-      <Patterns checkerId={checker} hatchId={hatch} />
-      <rect x={8} y={8} width={1184} height={744} rx={12} fill={WINDOW} stroke={INK} strokeWidth="1.25" />
-      <line x1={8} y1={60} x2={1192} y2={60} stroke="rgba(23,24,21,0.15)" />
-      <text x={32} y={41} className="v-label" fill={GRAPHITE}>
-        Generative Fill
+    <g>
+      <rect x={x} y={y} width={w} height={42} rx={21} fill="#1f1f1d" stroke={STROKE} />
+      <text x={x + 18} y={y + 26} className="v-label" fill={PAPER}>
+        {mode} ▾
       </text>
-      <text x={176} y={41} className="v-label" fill={INK}>
-        Compositor
+      <line x1={x + 118} y1={y + 12} x2={x + 118} y2={y + 30} stroke={STROKE} />
+      <text x={x + 132} y={y + 26} className="v-label" fill={PAPER}>
+        Model ▾
       </text>
-      <line x1={176} y1={59} x2={266} y2={59} stroke={INK} strokeWidth="2" />
-      <UndoRedo x={998} y={30} />
-      <text x={1166} y={41} textAnchor="end" className="v-kicker" fill={GRAPHITE}>
-        history 14
+      <circle cx={x + w - 128} cy={y + 21} r={13} fill={PAPER} />
+      <path d={`M${x + w - 134} ${y + 27}l9-11`} stroke={INK} strokeWidth="1.6" strokeLinecap="round" />
+      <rect x={x + w - 104} y={y + 14} width={14} height={14} rx={3} fill="none" stroke={FOG} strokeWidth="1.3" transform={`rotate(45 ${x + w - 97} ${y + 21})`} />
+      <path d={`M${x + w - 76} ${y + 15}h12M${x + w - 76} ${y + 21}h12M${x + w - 76} ${y + 27}h12`} stroke={FOG} strokeWidth="1.4" />
+      <text x={x + w - 42} y={y + 27} className="v-label" fill={FOG}>
+        ↶ ↷
       </text>
+    </g>
+  );
+}
 
-      {/* Tool rail */}
-      <line x1={64} y1={60} x2={64} y2={752} stroke="rgba(23,24,21,0.15)" />
-      <rect x={20} y={124} width={32} height={32} rx={5} fill={MASK} opacity={0.9} />
-      <circle cx={36} cy={140} r={7} fill="none" stroke={INK} strokeWidth="1.5" />
-      <path d="M28 88h16M36 80v16" stroke={INK} strokeWidth="1.5" />
-      <text x={36} y={200} textAnchor="middle" className="v-title" fill={INK}>
-        T
+function PromptPill({ x, y, w }: PromptPillProps) {
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={44} rx={22} fill="#1f1f1d" stroke={STROKE} />
+      <text x={x + 20} y={y + 27} className="v-small" fill={FOG}>
+        Describe what to add in the painted area…
       </text>
-      <path d="M26 236h20M26 248h20M32 230v24M40 230v24" stroke={INK} strokeWidth="1.2" />
+      <circle cx={x + w - 22} cy={y + 22} r={12} fill="#2c2c29" />
+      <path d={`M${x + w - 22} ${y + 28}v-12M${x + w - 27} ${y + 21}l5-5 5 5`} stroke={PAPER} strokeWidth="1.5" fill="none" />
+    </g>
+  );
+}
 
-      {/* Artboard: checkerboard, outpainted margin, source image */}
-      <rect x={64} y={60} width={796} height={640} fill="#eceae3" />
-      <rect x={130} y={110} width={660} height={520} fill={`url(#${checker})`} />
-      <rect x={130} y={110} width={660} height={520} fill="#cdbfa6" opacity="0.55" />
-      <rect x={130} y={536} width={660} height={94} fill="#b3a58c" opacity="0.6" />
-      <rect x={130} y={110} width={660} height={520} fill={`url(#${hatch})`} />
-      <VaseArt x={230} y={170} w={460} h={400} />
-      <rect x={230} y={170} width={460} height={400} fill="none" stroke={INK} strokeDasharray="6 5" />
-      <Tag x={146} y={124} label="outpaint preview" fill={WINDOW} color={INK} stroke={INK} />
-      <text x={236} y={590} className="v-kicker" fill={INK}>
-        source 1024 × 890
+function LayerRow({ x, y, w, name, badge, selected, icon }: LayerRowProps) {
+  return (
+    <g>
+      {selected ? <rect x={x} y={y} width={w} height={30} rx={6} fill="#262624" /> : null}
+      {icon === 'artboard' ? (
+        <rect x={x + 10} y={y + 9} width={12} height={12} rx={2} fill="none" stroke={FOG} strokeDasharray="2 2" />
+      ) : icon === 'text' ? (
+        <text x={x + 12} y={y + 20} className="v-kicker" fill={FOG}>
+          T
+        </text>
+      ) : (
+        <circle cx={x + 16} cy={y + 15} r={6} fill="#cdbfa6" />
+      )}
+      <text x={x + 30} y={y + 20} className="v-small" fill={PAPER}>
+        {name}
       </text>
+      {badge ? (
+        <text x={x + w - 8} y={y + 20} textAnchor="end" className="v-kicker" fill="#b4a2ff">
+          {badge}
+        </text>
+      ) : null}
+    </g>
+  );
+}
 
-      {/* Smart guides */}
-      <line x1={460} y1={110} x2={460} y2={630} stroke={MASK} strokeWidth="1.25" />
-      <line x1={300} y1={426} x2={620} y2={426} stroke={MASK} strokeWidth="1.25" strokeDasharray="4 4" />
-      <text x={628} y={430} className="v-kicker" fill={MASK}>
-        snap
+function PropField({ x, y, w, prefix, value }: PropFieldProps) {
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={28} rx={7} fill="#1f1f1d" stroke={STROKE} />
+      <text x={x + 10} y={y + 19} className="v-kicker" fill={FOG}>
+        {prefix}
       </text>
-
-      {/* Text layer pulled out of the image */}
-      <text x={252} y={236} className="v-poster" fill={INK}>
-        SOFT LIGHT
+      <text x={x + (prefix ? 26 : 10)} y={y + 19} className="v-kicker" fill={PAPER}>
+        {value}
       </text>
-      <rect x={244} y={202} width={178} height={44} fill="none" stroke={INK} strokeDasharray="3 3" />
+    </g>
+  );
+}
 
-      {/* Mask and the selected layer */}
-      <path d={MASK_PATH} fill={MASK} fillOpacity="0.42" stroke={MASK} strokeWidth="1.5" strokeDasharray="5 4" />
-      <Tag x={530} y={176} label="mask, reused" fill={MASK} color={INK} />
-      <Handles x={366} y={256} w={188} h={174} />
-
-      {/* Canvas footer */}
-      <line x1={64} y1={700} x2={860} y2={700} stroke="rgba(23,24,21,0.15)" />
-      <text x={84} y={732} className="v-kicker" fill={GRAPHITE}>
-        konva stage, 5 layers
-      </text>
-      <text x={840} y={732} textAnchor="end" className="v-kicker" fill={GRAPHITE}>
-        84%
-      </text>
-
-      {/* Layers panel */}
-      <rect x={860} y={60} width={332} height={692} fill={PAPER} />
-      <line x1={860} y1={60} x2={860} y2={752} stroke="rgba(23,24,21,0.15)" />
-      <text x={884} y={98} className="v-label" fill={INK}>
+/** Compositor: layers on the left, artboard in the middle, properties on the right. */
+function Compositor({ x, y, w, h, compact }: CompositorProps) {
+  const layersW = compact ? 190 : 140;
+  const propsW = compact ? 200 : 178;
+  const stageX = x + layersW;
+  const stageW = w - layersW - propsW;
+  const propsX = x + w - propsW;
+  const artW = compact ? stageW - 24 : stageW - 28;
+  const artH = artW * 0.75;
+  const artX = stageX + (stageW - artW) / 2;
+  const artY = y + (compact ? 40 : (h - artH) / 2 - 20);
+  const center = artX + artW / 2;
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={16} fill="#141413" stroke={STROKE} />
+      {/* Layers */}
+      <text x={x + 14} y={y + 30} className="v-label" fill={PAPER}>
         Layers
       </text>
-      <LayerRow x={876} y={116} w={300} name="Soft light" detail="AI text" thumb="text" />
-      <LayerRow x={876} y={166} w={300} name="Vase" detail="normal" thumb="image" selected />
-      <LayerRow x={876} y={216} w={300} name="Shadow" detail="multiply" thumb="shadow" />
-      <LayerRow x={876} y={266} w={300} name="Generated fill" detail="normal" thumb="mask" />
-      <LayerRow x={876} y={316} w={300} name="Background" detail="locked" thumb="background" />
+      <LayerRow x={x + 8} y={y + 44} w={layersW - 16} name="Artboard" icon="artboard" />
+      <LayerRow x={x + 8} y={y + 76} w={layersW - 16} name="Soft light" badge="AI" icon="text" />
+      <LayerRow x={x + 8} y={y + 108} w={layersW - 16} name="Vase" icon="image" selected />
+      <LayerRow x={x + 8} y={y + 140} w={layersW - 16} name="Shadow" icon="image" />
+      <LayerRow x={x + 8} y={y + 172} w={layersW - 16} name="Background" icon="image" />
 
-      <line x1={876} y1={382} x2={1176} y2={382} stroke="rgba(23,24,21,0.15)" />
-      <text x={884} y={414} className="v-label" fill={INK}>
-        Blend mode
+      {/* Stage */}
+      <rect x={stageX} y={y + 1} width={stageW} height={h - 2} fill="#0b0b0b" />
+      <VaseArt x={artX} y={artY} w={artW} h={artH} />
+      <text x={artX + 12} y={artY + 26} className="v-poster-sm" fill={INK}>
+        SOFT LIGHT
       </text>
-      <rect x={884} y={426} width={284} height={40} rx={5} fill={WINDOW} stroke={INK} />
-      <text x={900} y={452} className="v-body" fill={INK}>
-        Multiply
+      <line x1={center} y1={artY - 12} x2={center} y2={artY + artH + 12} stroke={GUIDE} strokeWidth="1.25" />
+      <rect x={center - artW * 0.16} y={artY + artH * 0.12} width={artW * 0.32} height={artH * 0.62} fill="none" stroke={PAPER} strokeWidth="1.25" />
+      {[
+        [center - artW * 0.16, artY + artH * 0.12],
+        [center + artW * 0.16, artY + artH * 0.12],
+        [center - artW * 0.16, artY + artH * 0.74],
+        [center + artW * 0.16, artY + artH * 0.74],
+      ].map(([hx, hy]) => (
+        <rect key={`${hx}-${hy}`} x={hx - 4} y={hy - 4} width={8} height={8} fill={PAPER} stroke={INK} />
+      ))}
+      <circle cx={center} cy={artY + artH + 26} r={7} fill="none" stroke={PAPER} strokeWidth="1.3" />
+      {!compact ? (
+        <>
+          <rect x={stageX + 12} y={y + h - 46} width={110} height={32} rx={16} fill="#1f1f1d" stroke={STROKE} />
+          <text x={stageX + 28} y={y + h - 25} className="v-kicker" fill={FOG}>
+            ↶ ↷  59%
+          </text>
+        </>
+      ) : null}
+
+      {/* Properties */}
+      <text x={propsX + 14} y={y + 30} className="v-label" fill={PAPER}>
+        Vase
       </text>
-      <path d="M1146 442l6 6 6-6" fill="none" stroke={INK} strokeWidth="1.5" />
-      <text x={884} y={500} className="v-label" fill={INK}>
+      <text x={propsX + 14} y={y + 56} className="v-kicker" fill={FOG}>
         Opacity
       </text>
-      <text x={1168} y={500} textAnchor="end" className="v-kicker" fill={GRAPHITE}>
-        72%
+      <PropField x={propsX + 14} y={y + 64} w={(propsW - 36) / 2} prefix="%" value="100" />
+      <text x={propsX + 22 + (propsW - 36) / 2} y={y + 56} className="v-kicker" fill={FOG}>
+        Blend
       </text>
-      <rect x={884} y={514} width={284} height={4} rx={2} fill="#dfdbcf" />
-      <rect x={884} y={514} width={204} height={4} rx={2} fill={INK} />
-      <circle cx={1088} cy={516} r={8} fill={WINDOW} stroke={INK} strokeWidth="1.5" />
+      <PropField x={propsX + 22 + (propsW - 36) / 2} y={y + 64} w={(propsW - 36) / 2} prefix="" value="Multiply" />
+      <rect x={propsX + 14} y={y + 100} width={propsW - 28} height={BLEND_MODES.length * 24 + 12} rx={9} fill="#1f1f1d" stroke={STROKE} />
+      {BLEND_MODES.map((mode, index) => (
+        <g key={mode}>
+          {mode === 'Multiply' ? <rect x={propsX + 20} y={y + 106 + index * 24} width={propsW - 40} height={22} rx={5} fill="#2c2c29" /> : null}
+          <text x={propsX + 28} y={y + 121 + index * 24} className="v-kicker" fill={mode === 'Multiply' ? PAPER : FOG}>
+            {mode}
+          </text>
+        </g>
+      ))}
+      {!compact ? (
+        <>
+          <text x={propsX + 14} y={y + 310} className="v-kicker" fill={FOG}>
+            Position
+          </text>
+          <PropField x={propsX + 14} y={y + 318} w={(propsW - 36) / 2} prefix="X" value="128" />
+          <PropField x={propsX + 22 + (propsW - 36) / 2} y={y + 318} w={(propsW - 36) / 2} prefix="Y" value="64" />
+          <text x={propsX + 14} y={y + 370} className="v-kicker" fill={FOG}>
+            Dimension
+          </text>
+          <PropField x={propsX + 14} y={y + 378} w={(propsW - 36) / 2} prefix="W" value="420" />
+          <PropField x={propsX + 22 + (propsW - 36) / 2} y={y + 378} w={(propsW - 36) / 2} prefix="H" value="560" />
+          <text x={propsX + 14} y={y + 430} className="v-kicker" fill={FOG}>
+            Tools
+          </text>
+          <rect x={propsX + 14} y={y + 438} width={propsW - 28} height={30} rx={15} fill="#1f1f1d" stroke={STROKE} />
+          <text x={propsX + 28} y={y + 458} className="v-kicker" fill={PAPER}>
+            T+ Create layers (AI)
+          </text>
+          <rect x={propsX + 14} y={y + 476} width={propsW - 28} height={30} rx={15} fill="#1f1f1d" stroke={STROKE} />
+          <text x={propsX + 28} y={y + 496} className="v-kicker" fill={PAPER}>
+            Remove background
+          </text>
+        </>
+      ) : null}
+    </g>
+  );
+}
 
-      <line x1={876} y1={548} x2={1176} y2={548} stroke="rgba(23,24,21,0.15)" />
-      <text x={884} y={580} className="v-label" fill={INK}>
-        Generative Fill
+function MaskStroke({ transform }: MaskStrokeProps) {
+  return (
+    <path
+      transform={transform}
+      d="M262 236C280 208 316 196 344 206C372 216 384 232 404 222"
+      fill="none"
+      stroke={MASK}
+      strokeWidth="30"
+      strokeLinecap="round"
+    />
+  );
+}
+
+function Wide() {
+  const blur = useId();
+  return (
+    <>
+      <BlurDefs id={blur} />
+      <Dots width={1200} height={760} color="rgba(244,241,232,0.07)" background={CANVAS} />
+
+      {/* The rest of the graph blurs while Generative Fill edits in place */}
+      <g filter={`url(#${blur})`} opacity="0.45">
+        <rect x={30} y={250} width={120} height={150} rx={12} fill={NODE} stroke={STROKE} />
+        <VaseArt x={40} y={262} w={100} h={100} />
+        <path d="M150 300C170 300 170 330 186 330" stroke="#e6a03a" strokeWidth="2" fill="none" />
+        <rect x={30} y={520} width={130} height={90} rx={12} fill={NODE} stroke={STROKE} />
+      </g>
+
+      <text x={190} y={120} className="v-kicker" fill={FOG}>
+        generative fill, inpaint
       </text>
-      <rect x={884} y={594} width={284} height={56} rx={5} fill={WINDOW} stroke={INK} />
-      <text x={900} y={627} className="v-body" fill={GRAPHITE}>
-        dried flowers in the vase
+      <EditToolbar x={180} y={132} mode="Inpaint" w={400} />
+      <VaseArt x={190} y={190} w={380} h={286} />
+      <MaskStroke />
+      <circle cx={404} cy={222} r={15} fill="none" stroke={PAPER} strokeWidth="1.5" />
+      <PromptPill x={190} y={494} w={380} />
+
+      {/* Outpaint: drag the frame out, the new area waits in violet */}
+      <text x={190} y={584} className="v-kicker" fill={FOG}>
+        outpaint, extend the frame
       </text>
-      <rect x={884} y={662} width={284} height={42} rx={5} fill={MASK} />
-      <text x={1026} y={689} textAnchor="middle" className="v-label" fill={INK}>
-        Generate
-      </text>
-      <text x={884} y={728} className="v-kicker" fill={GRAPHITE}>
-        preview shown while it runs
-      </text>
+      <VaseArt x={190} y={596} w={220} h={140} />
+      <rect x={410} y={596} width={150} height={140} fill={OUTPAINT} />
+      <rect x={190} y={596} width={370} height={140} fill="none" stroke={PAPER} strokeWidth="1" />
+      {[
+        [190, 596],
+        [560, 596],
+        [190, 736],
+        [560, 736],
+      ].map(([hx, hy]) => (
+        <rect key={`${hx}-${hy}`} x={hx - 4} y={hy - 4} width={8} height={8} fill={PAPER} />
+      ))}
+      <rect x={556} y={650} width={8} height={32} rx={4} fill={PAPER} />
+
+      <Compositor x={612} y={24} w={572} h={712} />
     </>
   );
 }
 
 function Narrow() {
-  const checker = useId();
-  const hatch = useId();
   return (
     <>
-      <Patterns checkerId={checker} hatchId={hatch} />
-      <rect x={8} y={8} width={584} height={744} rx={12} fill={WINDOW} stroke={INK} strokeWidth="1.25" />
-      <line x1={8} y1={58} x2={592} y2={58} stroke="rgba(23,24,21,0.15)" />
-      <text x={30} y={40} className="v-label" fill={INK}>
-        Compositor
-      </text>
-      <line x1={30} y1={57} x2={140} y2={57} stroke={INK} strokeWidth="2" />
-      <UndoRedo x={504} y={30} />
-
-      <rect x={32} y={80} width={536} height={400} fill={`url(#${checker})`} />
-      <rect x={32} y={80} width={536} height={400} fill="#cdbfa6" opacity="0.55" />
-      <rect x={32} y={80} width={536} height={400} fill={`url(#${hatch})`} />
-      <VaseArt x={92} y={110} w={416} h={340} />
-      <rect x={92} y={110} width={416} height={340} fill="none" stroke={INK} strokeDasharray="6 5" />
-      <line x1={300} y1={80} x2={300} y2={480} stroke={MASK} strokeWidth="1.25" />
-      <text x={110} y={168} className="v-poster" fill={INK}>
-        SOFT LIGHT
-      </text>
-      <g transform="translate(300 156) scale(0.85) translate(-460 -215)">
-        <path d={MASK_PATH} fill={MASK} fillOpacity="0.42" stroke={MASK} strokeWidth="1.8" strokeDasharray="5 4" />
+      <Dots width={600} height={760} color="rgba(244,241,232,0.07)" background={CANVAS} />
+      <EditToolbar x={60} y={20} mode="Inpaint" w={480} />
+      <VaseArt x={40} y={78} w={520} h={300} />
+      <g transform="translate(300 180) scale(1.35) translate(-333 -214)">
+        <MaskStroke />
       </g>
-      <Handles x={219} y={176} w={162} h={156} />
-      <Tag x={392} y={120} label="mask, reused" fill={MASK} color={INK} />
-
-      <line x1={8} y1={500} x2={592} y2={500} stroke="rgba(23,24,21,0.15)" />
-      <text x={32} y={534} className="v-label" fill={INK}>
-        Layers
+      <rect x={60} y={392} width={480} height={44} rx={22} fill="#1f1f1d" stroke={STROKE} />
+      <text x={80} y={419} className="v-small" fill={FOG}>
+        Describe what to add in the painted area…
       </text>
-      <text x={568} y={534} textAnchor="end" className="v-kicker" fill={GRAPHITE}>
-        history 14
-      </text>
-      <LayerRow x={24} y={550} w={552} name="Soft light" detail="AI text" thumb="text" />
-      <LayerRow x={24} y={598} w={552} name="Vase" detail="normal" thumb="image" selected />
-      <LayerRow x={24} y={648} w={552} name="Shadow" detail="multiply" thumb="shadow" />
-      <LayerRow x={24} y={696} w={552} name="Background" detail="locked" thumb="background" />
+      <Compositor x={16} y={456} w={568} h={292} compact />
     </>
   );
 }
@@ -295,7 +324,7 @@ function Narrow() {
 export function GenerativeFillVisual() {
   return (
     <VizFrame
-      label="Reconstruction of the Compositor editor: a still life with a pink inpainting mask marked as reused, a hatched outpainting preview around the source image, a center smart guide, an extracted text layer, and a layers panel with blend modes."
+      label="Reconstruction of Generative Fill and Compositor. Generative Fill edits a node in place while the rest of the canvas blurs: an Inpaint toolbar with model, brush, eraser, and undo; a lavender mask painted over the vase; a prompt field; and an outpainting frame extended to the right with the new area shown in violet. Compositor shows layers (Artboard, an AI-extracted Soft light text layer, Vase, Shadow, Background), an artboard with a centre smart guide and selection handles, and properties with opacity, the blend-mode list with Multiply selected, position, dimensions, and AI tools."
       wide={<Wide />}
       narrow={<Narrow />}
     />

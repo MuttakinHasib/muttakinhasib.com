@@ -1179,6 +1179,13 @@
     letter-spacing: -0.02em;
   }
 
+  .viz .v-poster-sm {
+    font-size: 18px;
+    font-weight: 760;
+    font-stretch: 125%;
+    letter-spacing: -0.02em;
+  }
+
   .viz-narrow .v-kicker {
     font-size: 14px;
   }
@@ -2152,213 +2159,6 @@
     accent-color: var(--color-ink);
   }
 
-  /* Planner (React Flow) */
-  .pd-layout {
-    display: grid;
-    gap: 1.25rem;
-  }
-
-  @media (width >= 64rem) {
-    .pd-panel {
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr);
-      align-items: start;
-    }
-  }
-
-  .pd-canvas {
-    height: clamp(20rem, 42vw, 30rem);
-    border: 1px solid color-mix(in oklab, var(--color-ink) 18%, transparent);
-    border-radius: 8px;
-    background: var(--color-paper);
-    overflow: hidden;
-  }
-
-  .pd-canvas .react-flow__pane {
-    cursor: crosshair;
-  }
-
-  .pd-canvas .react-flow__selection,
-  .pd-canvas .react-flow__nodesselection-rect {
-    background: color-mix(in oklab, var(--color-signal) 18%, transparent);
-    border: 1.5px dashed var(--color-ink);
-  }
-
-  .pd-canvas .react-flow__edge-path {
-    stroke: var(--color-ink);
-    stroke-width: 1.5;
-  }
-
-  .pd-canvas .pd-edge-idle .react-flow__edge-path {
-    opacity: 0.25;
-  }
-
-  .pd-canvas .pd-edge-inside .react-flow__edge-path {
-    stroke-width: 2.25;
-  }
-
-  .pd-canvas .pd-edge-feeding .react-flow__edge-path {
-    stroke: var(--color-ledger);
-    stroke-dasharray: 6 5;
-    stroke-width: 2;
-  }
-
-  .pd-canvas .react-flow__attribution {
-    font-size: 10px;
-    background: transparent;
-  }
-
-  .pd-node {
-    width: 11.5rem;
-    padding: 0.65rem 0.8rem 0.75rem;
-    color: var(--color-ink);
-    background: var(--color-paper);
-    border: 1px solid var(--color-ink);
-    border-radius: var(--radius-node);
-    transition: box-shadow 160ms ease, background-color 160ms ease;
-  }
-
-  .pd-node[data-selected] {
-    background: #fbfaf6;
-    box-shadow:
-      0 0 0 3px var(--color-signal),
-      0 0 0 4px var(--color-ink);
-  }
-
-  .pd-node[data-role="external"] {
-    border-style: dashed;
-    border-color: var(--color-ledger);
-  }
-
-  .pd-node-meta {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.5rem;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-stretch: 87.5%;
-    color: var(--color-graphite);
-  }
-
-  .pd-role {
-    padding: 0 0.35rem;
-    color: var(--color-ink);
-    background: var(--color-signal);
-    border-radius: 3px;
-  }
-
-  .pd-node[data-role="internal"] .pd-role {
-    background: var(--color-surface);
-  }
-
-  .pd-node[data-role="external"] .pd-role {
-    background: color-mix(in oklab, var(--color-ledger) 45%, transparent);
-  }
-
-  .pd-node-title {
-    margin-top: 0.3rem;
-    font-weight: 600;
-    font-size: 0.975rem;
-  }
-
-  .pd-handle.react-flow__handle {
-    width: 9px;
-    height: 9px;
-    background: var(--color-paper);
-    border: 1.5px solid var(--color-ink);
-    border-radius: 999px;
-  }
-
-  .pd-node[data-selected] .pd-handle.react-flow__handle {
-    background: var(--color-signal);
-  }
-
-  .pd-panel {
-    display: grid;
-    align-content: start;
-    gap: 1.25rem;
-  }
-
-  .pd-checklist {
-    padding: 0;
-    border: 0;
-  }
-
-  .pd-plan {
-    display: grid;
-    gap: 0.6rem;
-    padding: 0.9rem 1rem;
-    font-size: 0.9375rem;
-    background: var(--color-surface);
-    border-radius: 6px;
-  }
-
-  .pd-plan > div {
-    display: grid;
-    grid-template-columns: 7.5rem 1fr;
-    gap: 0.75rem;
-  }
-
-  .pd-plan dt {
-    font-weight: 600;
-  }
-
-  .pd-plan [data-warning] dt {
-    color: #8a5a12;
-  }
-
-  .pd-app {
-    padding: 1rem;
-    border: 1px solid var(--color-ink);
-    border-radius: 8px;
-    background: #fbfaf6;
-  }
-
-  .pd-field {
-    display: grid;
-    gap: 0.3rem;
-  }
-
-  .pd-field-label {
-    font-size: 0.875rem;
-    font-weight: 600;
-  }
-
-  .pd-field-input {
-    padding: 0.6rem 0.75rem;
-    font-size: 0.875rem;
-    color: var(--color-graphite);
-    border: 1px solid var(--color-ink);
-    border-radius: 4px;
-    background: var(--color-paper);
-  }
-
-  .pd-field-upload,
-  .pd-field-fixed {
-    padding: 0.6rem 0.75rem;
-    border: 1px dashed var(--color-graphite);
-    border-radius: 4px;
-  }
-
-  .pd-run {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.5rem;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: var(--color-paper);
-    background: var(--color-ink);
-    border-radius: 4px;
-  }
-
-  .pd-result {
-    display: grid;
-    gap: 0.2rem;
-    padding: 0.75rem;
-    background: var(--color-sunk);
-    border-radius: 4px;
-  }
-
   /* Compositor */
   .cd-layout {
     display: grid;
@@ -2389,16 +2189,16 @@
     align-items: flex-start;
     justify-content: flex-end;
     padding: 0.35rem;
-    border: 1.5px dashed var(--color-mask);
+    border: 1.5px dashed #a78bfa;
     border-radius: 40% 46% 42% 48%;
-    background: color-mix(in oklab, var(--color-mask) 22%, transparent);
+    background: rgba(167, 139, 250, 0.4);
     pointer-events: none;
   }
 
   .cd-mask .type-mono {
     padding: 0 0.3rem;
     color: var(--color-ink);
-    background: var(--color-mask);
+    background: #c4b5fd;
     border-radius: 3px;
   }
 
@@ -3257,4 +3057,350 @@
   ::view-transition-group(*) {
     animation: none !important;
   }
+}
+
+/* ───────────────────────── Planner demo (unlayered) ─────────────────────────
+   React Flow's base.css is unlayered, so overrides for its edges and handles
+   must be unlayered too or they lose to it regardless of specificity. */
+/* Planner (React Flow): dark canvas, typed ports, Build App halos */
+.pd-layout {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (width >= 64rem) {
+  .pd-panel {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.pd-canvas {
+  --pd-text: #8ab4ff;
+  --pd-image: #e6a03a;
+  --pd-video: #94cc7a;
+  --pd-audio: #e9499f;
+  --pd-violet: #9b6dff;
+  --pd-amber: #f5a524;
+  position: relative;
+  height: clamp(22rem, 44vw, 31rem);
+  border-radius: 10px;
+  background: #0f0f0f;
+  color: var(--color-paper);
+  overflow: hidden;
+}
+
+.pd-toolbar {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.3rem 0.85rem 0.3rem 0.3rem;
+  transform: translateX(-50%);
+  border: 1px solid #30302c;
+  border-radius: 999px;
+  background: #1b1b1a;
+  white-space: nowrap;
+}
+
+.pd-build {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  font-size: 0.9375rem;
+  font-weight: 560;
+  color: var(--color-paper);
+  background: #2c2c29;
+  border-radius: 999px;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.pd-build:hover:not(:disabled),
+.pd-build[aria-pressed="true"] {
+  background: #3a3a36;
+  box-shadow: 0 0 0 1.5px var(--color-signal);
+}
+
+.pd-build:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pd-build-icon {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+}
+
+.pd-build-hint {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.8125rem;
+  color: var(--color-fog);
+}
+
+.pd-canvas .react-flow__pane {
+  cursor: crosshair;
+}
+
+.pd-canvas .react-flow__selection,
+.pd-canvas .react-flow__nodesselection-rect {
+  background: rgba(244, 241, 232, 0.05);
+  border: 1px solid rgba(244, 241, 232, 0.6);
+}
+
+.pd-canvas .react-flow__edge-path {
+  stroke-width: 2;
+  opacity: 0.35;
+}
+
+.pd-canvas .pd-edge-inside .react-flow__edge-path {
+  opacity: 0.95;
+}
+
+.pd-canvas .pd-edge-text .react-flow__edge-path {
+  stroke: var(--pd-text);
+}
+
+.pd-canvas .pd-edge-image .react-flow__edge-path {
+  stroke: var(--pd-image);
+}
+
+.pd-canvas .pd-edge-video .react-flow__edge-path {
+  stroke: var(--pd-video);
+}
+
+.pd-canvas .pd-edge-audio .react-flow__edge-path {
+  stroke: var(--pd-audio);
+}
+
+.pd-canvas .react-flow__attribution {
+  font-size: 10px;
+  background: transparent;
+}
+
+.pd-canvas .react-flow__attribution a {
+  color: var(--color-fog);
+}
+
+.pd-node {
+  width: 11.5rem;
+  color: var(--color-paper);
+  transition: opacity 200ms ease;
+}
+
+.pd-node-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 560;
+}
+
+.pd-node-kind {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-stretch: 87.5%;
+  font-weight: 400;
+  color: var(--color-fog);
+}
+
+.pd-node-card {
+  position: relative;
+  height: 4.25rem;
+  border: 1px solid #30302c;
+  border-radius: 12px;
+  background: #1b1b1a;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.pd-node[data-selected] .pd-node-card {
+  box-shadow: 0 0 0 1.5px rgba(244, 241, 232, 0.7);
+}
+
+.pd-node[data-role="input"] .pd-node-card {
+  border: 2px solid var(--pd-violet);
+  background: #22163d;
+  box-shadow: none;
+}
+
+.pd-node[data-role="output"] .pd-node-card {
+  border: 2px solid var(--pd-amber);
+  background: #1b0e00;
+  box-shadow: none;
+}
+
+.pd-node[data-role="dim"] {
+  opacity: 0.32;
+}
+
+.pd-node-body {
+  height: 100%;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-fog);
+  border-radius: 11px;
+}
+
+.pd-node-body[data-kind="image-input"],
+.pd-node-body[data-kind="image"],
+.pd-node-body[data-kind="edit"],
+.pd-node-body[data-kind="video"] {
+  margin: 0.35rem;
+  height: calc(100% - 0.7rem);
+  background: linear-gradient(180deg, #cdbfa6 0 70%, #b3a58c 70%);
+  opacity: 0.85;
+}
+
+.pd-node-body[data-kind="video"] {
+  background: linear-gradient(180deg, #c9b8a8 0 70%, #a89a82 70%);
+}
+
+.pd-node-body[data-kind="audio"] {
+  background: repeating-linear-gradient(90deg, rgba(233, 73, 159, 0.55) 0 2px, transparent 2px 6px) center / 100% 40% no-repeat;
+}
+
+.pd-node-body[data-kind="text"] {
+  background: repeating-linear-gradient(180deg, rgba(244, 241, 232, 0.18) 0 2px, transparent 2px 9px) 0.75rem 0.75rem / 70% 60% no-repeat;
+}
+
+.pd-handle.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  background: #0f0f0f;
+  border: 2px solid var(--color-fog);
+  border-radius: 999px;
+}
+
+.pd-handle.react-flow__handle[data-type="text"] {
+  background: var(--pd-text);
+  border-color: var(--pd-text);
+}
+
+.pd-handle.react-flow__handle[data-type="image"] {
+  background: var(--pd-image);
+  border-color: var(--pd-image);
+}
+
+.pd-handle.react-flow__handle[data-type="video"] {
+  background: var(--pd-video);
+  border-color: var(--pd-video);
+}
+
+.pd-handle.react-flow__handle[data-type="audio"] {
+  background: var(--pd-audio);
+  border-color: var(--pd-audio);
+}
+
+.pd-panel {
+  display: grid;
+  align-content: start;
+  gap: 1.25rem;
+}
+
+.pd-checklist {
+  padding: 0;
+  border: 0;
+}
+
+.pd-plan {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  font-size: 0.9375rem;
+  background: var(--color-surface);
+  border-radius: 6px;
+}
+
+.pd-plan > div {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: 0.75rem;
+}
+
+.pd-plan dt {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+}
+
+.pd-plan [data-role] dt::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.pd-plan [data-role="input"] dt::before {
+  background: #22163d;
+  box-shadow: 0 0 0 2px #9b6dff;
+}
+
+.pd-plan [data-role="output"] dt::before {
+  background: #1b0e00;
+  box-shadow: 0 0 0 2px #f5a524;
+}
+
+.pd-app {
+  padding: 1rem;
+  border: 1px solid var(--color-ink);
+  border-radius: 8px;
+  background: #fbfaf6;
+}
+
+.pd-app-empty {
+  border-style: dashed;
+}
+
+.pd-field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.pd-field-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.pd-field-input {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--color-graphite);
+  border: 1px solid var(--color-ink);
+  border-radius: 4px;
+  background: var(--color-paper);
+}
+
+.pd-field-upload .pd-field-input {
+  border-style: dashed;
+}
+
+.pd-run {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-paper);
+  background: var(--color-ink);
+  border-radius: 4px;
+}
+
+.pd-result {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem;
+  background: var(--color-sunk);
+  border-left: 3px solid #94cc7a;
+  border-radius: 4px;
 }

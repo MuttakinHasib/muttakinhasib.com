@@ -8,6 +8,7 @@ const nodes: WorkflowNodeSpec[] = [
   { id: 'image', label: 'Image model', kind: WorkflowKind.IMAGE },
   { id: 'upscale', label: 'Upscale', kind: WorkflowKind.EDIT },
   { id: 'video', label: 'Video', kind: WorkflowKind.VIDEO },
+  { id: 'caption', label: 'Caption', kind: WorkflowKind.TEXT },
 ];
 
 const edges: WorkflowEdgeSpec[] = [
@@ -15,37 +16,49 @@ const edges: WorkflowEdgeSpec[] = [
   { source: 'style', target: 'image' },
   { source: 'image', target: 'upscale' },
   { source: 'upscale', target: 'video' },
+  { source: 'image', target: 'caption' },
 ];
 
 describe('planApp', () => {
-  it('derives inputs, results, and internal steps from a connected selection', () => {
+  it('plans entry inputs, leaf outputs, and internal steps from a connected selection', () => {
     const plan = planApp({ nodes, edges, selected: new Set(['prompt', 'style', 'image', 'upscale', 'video']) });
     assert.deepEqual(plan.inputs, ['prompt', 'style']);
     assert.deepEqual(plan.outputs, ['video']);
     assert.deepEqual(plan.internal, ['image', 'upscale']);
-    assert.deepEqual(plan.external, []);
-    assert.equal(plan.flows, 1);
+    assert.equal(plan.disabledReason, null);
   });
 
-  it('reports unselected nodes that still feed the selection', () => {
+  it('ignores edges that leave the selection', () => {
     const plan = planApp({ nodes, edges, selected: new Set(['prompt', 'image', 'upscale']) });
-    assert.deepEqual(plan.external, ['style']);
     assert.deepEqual(plan.outputs, ['upscale']);
+    assert.deepEqual(plan.inputs, ['prompt']);
   });
 
-  it('treats a generator with no selected upstream as an input that runs on saved settings', () => {
-    const plan = planApp({ nodes, edges, selected: new Set(['image', 'upscale']) });
-    assert.deepEqual(plan.inputs, ['image']);
-    assert.deepEqual(plan.outputs, ['upscale']);
+  it('can plan several outputs from one selection', () => {
+    const plan = planApp({ nodes, edges, selected: new Set(['prompt', 'image', 'upscale', 'video', 'caption']) });
+    assert.deepEqual(plan.outputs, ['video', 'caption']);
   });
 
-  it('counts unconnected flows inside one selection', () => {
-    const plan = planApp({ nodes, edges, selected: new Set(['prompt', 'video']) });
-    assert.equal(plan.flows, 2);
+  it('drops an input that reaches no planned output', () => {
+    const plan = planApp({ nodes, edges, selected: new Set(['prompt', 'style', 'upscale', 'video']) });
+    assert.deepEqual(plan.outputs, ['video']);
+    assert.deepEqual(plan.inputs, []);
+    assert.match(plan.disabledReason ?? '', /feeds a result/);
   });
 
-  it('returns an empty plan for an empty selection', () => {
-    const plan = planApp({ nodes, edges, selected: new Set() });
-    assert.deepEqual(plan, { inputs: [], outputs: [], internal: [], external: [], flows: 0 });
+  it('never plans a generator with nothing selected upstream as an output', () => {
+    const plan = planApp({ nodes, edges, selected: new Set(['image', 'caption']) });
+    assert.deepEqual(plan.outputs, ['caption']);
+    assert.deepEqual(plan.inputs, []);
+  });
+
+  it('is disabled for a selection that produces nothing', () => {
+    const plan = planApp({ nodes, edges, selected: new Set(['prompt', 'style']) });
+    assert.match(plan.disabledReason ?? '', /produces a result/);
+  });
+
+  it('is disabled for fewer than two nodes', () => {
+    const plan = planApp({ nodes, edges, selected: new Set(['video']) });
+    assert.match(plan.disabledReason ?? '', /at least two/);
   });
 });

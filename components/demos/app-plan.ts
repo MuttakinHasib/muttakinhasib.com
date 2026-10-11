@@ -1,7 +1,13 @@
 /**
- * Simplified reconstruction of “Build App” planning: given a workflow graph
- * and a selection, derive which selected nodes become the app's inputs, which
- * become its results, and what the selection still depends on from outside.
+ * Simplified reconstruction of "Build App" planning. Given a workflow graph
+ * and a selection, decide which selected nodes become the app's inputs and
+ * outputs; everything else in the selection is an internal step.
+ *
+ * Only edges with both ends in the selection count. Outputs are the
+ * selection's leaves that depend on something inside it. Inputs are entry
+ * nodes of an input kind that feed the selection and reach a planned output
+ * along a wired path; an input that reaches no output would promise a field
+ * the app never uses.
  */
 
 export const WorkflowKind = {
@@ -32,55 +38,62 @@ export interface PlanRequest {
   selected: ReadonlySet<string>;
 }
 
+interface ReachRequest {
+  start: string;
+  targets: ReadonlySet<string>;
+  edges: readonly WorkflowEdgeSpec[];
+}
+
 export interface AppPlan {
   inputs: string[];
   outputs: string[];
   internal: string[];
-  external: string[];
-  flows: number;
+  disabledReason: string | null;
 }
 
 export const INPUT_KINDS = new Set<WorkflowKind>([WorkflowKind.TEXT_INPUT, WorkflowKind.IMAGE_INPUT]);
 
-function countFlows(edges: readonly WorkflowEdgeSpec[], selected: ReadonlySet<string>): number {
-  const parent = new Map([...selected].map((id) => [id, id]));
-  const find = (id: string): string => {
-    const next = parent.get(id) ?? id;
-    if (next === id) return id;
-    const root = find(next);
-    parent.set(id, root);
-    return root;
-  };
-  for (const { source, target } of edges) {
-    if (selected.has(source) && selected.has(target)) parent.set(find(source), find(target));
+function reachesAny({ start, targets, edges }: ReachRequest): boolean {
+  const stack = [start];
+  const seen = new Set<string>();
+  while (stack.length > 0) {
+    const id = stack.pop() as string;
+    if (targets.has(id)) return true;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    for (const edge of edges) if (edge.source === id) stack.push(edge.target);
   }
-  return new Set([...selected].map(find)).size;
+  return false;
 }
 
 export function planApp({ nodes, edges, selected }: PlanRequest): AppPlan {
   const inside = edges.filter((edge) => selected.has(edge.source) && selected.has(edge.target));
-  const hasUpstream = new Set(inside.map((edge) => edge.target));
-  const hasDownstream = new Set(inside.map((edge) => edge.source));
-  const kindOf = new Map(nodes.map((node) => [node.id, node.kind]));
-  const ordered = nodes.filter((node) => selected.has(node.id)).map((node) => node.id);
+  const hasIncoming = new Set(inside.map((edge) => edge.target));
+  const hasOutgoing = new Set(inside.map((edge) => edge.source));
+  const ordered = nodes.filter((node) => selected.has(node.id));
 
-  const inputs: string[] = [];
-  const outputs: string[] = [];
-  const internal: string[] = [];
-  for (const id of ordered) {
-    const isSource = !hasUpstream.has(id);
-    const isSink = !hasDownstream.has(id);
-    const isInputKind = INPUT_KINDS.has(kindOf.get(id) ?? WorkflowKind.IMAGE);
-    if (isSource && (isInputKind || !isSink)) inputs.push(id);
-    if (isSink && !isInputKind) outputs.push(id);
-    if (!isSource && !isSink) internal.push(id);
-  }
+  const outputs = ordered
+    .filter((node) => !INPUT_KINDS.has(node.kind) && hasIncoming.has(node.id) && !hasOutgoing.has(node.id))
+    .map((node) => node.id);
+  const outputSet = new Set(outputs);
 
-  const external = [
-    ...new Set(
-      edges.filter((edge) => !selected.has(edge.source) && selected.has(edge.target)).map((edge) => edge.source),
-    ),
-  ];
+  const inputs = ordered
+    .filter(
+      (node) =>
+        INPUT_KINDS.has(node.kind) &&
+        !hasIncoming.has(node.id) &&
+        hasOutgoing.has(node.id) &&
+        reachesAny({ start: node.id, targets: outputSet, edges: inside }),
+    )
+    .map((node) => node.id);
+  const inputSet = new Set(inputs);
 
-  return { inputs, outputs, internal, external, flows: selected.size === 0 ? 0 : countFlows(edges, selected) };
+  const internal = ordered.map((node) => node.id).filter((id) => !inputSet.has(id) && !outputSet.has(id));
+
+  let disabledReason: string | null = null;
+  if (selected.size < 2) disabledReason = 'Select at least two connected nodes.';
+  else if (outputs.length === 0) disabledReason = 'Nothing in the selection produces a result.';
+  else if (inputs.length === 0) disabledReason = 'No prompt or image in the selection feeds a result.';
+
+  return { inputs, outputs, internal, disabledReason };
 }
