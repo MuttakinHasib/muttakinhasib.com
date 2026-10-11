@@ -1,4 +1,4 @@
-import { Dots, type Pt, VizFrame } from './primitives';
+import { type Pt, VizFrame } from './primitives';
 
 /**
  * The six states of cocoding.ai's live activity preview, reconstructed after
@@ -37,17 +37,10 @@ interface WindowProps extends Box {
   beam?: boolean;
 }
 
-const CANVAS = '#0f0f0f';
-const NODE = '#1b1b1a';
-const BAR = '#1f1f1d';
-const WELL = '#151514';
-const STROKE = '#30302c';
-const PAPER = '#f4f1e8';
-const FOG = '#a9a79c';
-const SIGNAL = '#c7f36b';
-const STREAM = '#8ab4ff';
-const LEDGER = '#e6a03a';
-const TAG = '#f0c2d4';
+const BG = '#0c0224';
+const WHITE = '#f5f5f5';
+const FOG = '#8b8696';
+const SHIMMER = '#c4b5fd';
 const MONO = { fontFamily: 'var(--font-mono)' } as const;
 
 const specs: SceneSpec[] = [
@@ -61,16 +54,16 @@ const specs: SceneSpec[] = [
 
 /** Skeleton code lines, as the code window draws them before content arrives. */
 const SKELETON = [
-  { indent: 0, width: 0.55, color: 'rgba(138,180,255,0.32)' },
-  { indent: 0, width: 0.7, color: 'rgba(138,180,255,0.28)' },
-  { indent: 0, width: 0.12, color: 'rgba(244,241,232,0.06)' },
-  { indent: 0, width: 0.42, color: 'rgba(199,243,107,0.24)' },
-  { indent: 1, width: 0.52, color: 'rgba(244,241,232,0.14)' },
-  { indent: 1, width: 0.65, color: 'rgba(244,241,232,0.14)' },
-  { indent: 2, width: 0.48, color: 'rgba(199,243,107,0.2)' },
-  { indent: 2, width: 0.35, color: 'rgba(244,241,232,0.12)' },
-  { indent: 1, width: 0.28, color: 'rgba(244,241,232,0.1)' },
-  { indent: 0, width: 0.14, color: 'rgba(244,241,232,0.09)' },
+  { indent: 0, width: 0.55, color: 'rgba(192,132,252,0.22)' },
+  { indent: 0, width: 0.7, color: 'rgba(192,132,252,0.2)' },
+  { indent: 0, width: 0.12, color: 'rgba(255,255,255,0.05)' },
+  { indent: 0, width: 0.42, color: 'rgba(34,211,238,0.18)' },
+  { indent: 1, width: 0.52, color: 'rgba(255,255,255,0.12)' },
+  { indent: 1, width: 0.65, color: 'rgba(255,255,255,0.12)' },
+  { indent: 2, width: 0.48, color: 'rgba(34,211,238,0.15)' },
+  { indent: 2, width: 0.35, color: 'rgba(255,255,255,0.1)' },
+  { indent: 1, width: 0.28, color: 'rgba(255,255,255,0.09)' },
+  { indent: 0, width: 0.14, color: 'rgba(255,255,255,0.08)' },
 ];
 
 const FILES = ['page.tsx', 'layout.tsx', 'globals.css', 'TodoList.tsx', 'todos.ts', 'package.json'];
@@ -79,21 +72,21 @@ const FILES = ['page.tsx', 'layout.tsx', 'globals.css', 'TodoList.tsx', 'todos.t
 function Window({ x, y, w, h, title, beam }: WindowProps) {
   return (
     <g>
-      <rect x={x} y={y} width={w} height={h} rx={8} fill={WELL} stroke={STROKE} />
-      <path d={`M${x + 8} ${y}h${w - 16}a8 8 0 0 1 8 8v14H${x}V${y + 8}a8 8 0 0 1 8-8Z`} fill={BAR} />
-      <line x1={x} y1={y + 22} x2={x + w} y2={y + 22} stroke={STROKE} />
-      {[0, 1, 2].map((index) => (
-        <circle key={index} cx={x + 12 + index * 11} cy={y + 11} r={3.5} fill={STROKE} />
+      <rect x={x} y={y} width={w} height={h} rx={8} fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.1)" />
+      <rect x={x + 0.5} y={y + 0.5} width={w - 1} height={21.5} rx={8} fill="rgba(255,255,255,0.03)" />
+      <line x1={x} y1={y + 22} x2={x + w} y2={y + 22} stroke="rgba(255,255,255,0.1)" />
+      {['#ff5f57', '#febc2e', '#28c840'].map((color, index) => (
+        <circle key={color} cx={x + 12 + index * 11} cy={y + 11} r={3.5} fill={color} opacity={0.6} />
       ))}
       {title ? (
-        <text x={x + 50} y={y + 14.5} style={MONO} fontSize={9.5} fill={FOG}>
+        <text x={x + 50} y={y + 14.5} style={MONO} fontSize={9.5} fill="rgba(255,255,255,0.35)">
           {title}
         </text>
       ) : null}
       {beam ? (
         <>
-          <path d={`M${x + w - 110} ${y}h60`} stroke={STREAM} strokeWidth="1.5" strokeLinecap="round" opacity={0.7} />
-          <path d={`M${x + w - 50} ${y}h42a8 8 0 0 1 8 8v40`} fill="none" stroke={SIGNAL} strokeWidth="1.5" strokeLinecap="round" opacity={0.85} />
+          <path d={`M${x + w - 110} ${y}h60`} stroke="#a855f7" strokeWidth="1.5" strokeLinecap="round" opacity={0.6} />
+          <path d={`M${x + w - 50} ${y}h42a8 8 0 0 1 8 8v40`} fill="none" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" opacity={0.8} />
         </>
       ) : null}
     </g>
@@ -105,9 +98,9 @@ function Orbital({ x, y, w, h }: Box) {
   const cy = y + h / 2;
   const scale = Math.min(w, h) / 240;
   const rings = [
-    { r: 50, opacity: 0.18, dot: 3, color: STREAM, angle: -40 },
-    { r: 80, opacity: 0.12, dot: 2.5, color: PAPER, angle: 150 },
-    { r: 110, opacity: 0.08, dot: 2.2, color: 'rgba(138,180,255,0.6)', angle: 290 },
+    { r: 50, opacity: 0.16, dot: 3, color: '#a78bfa', angle: -40 },
+    { r: 80, opacity: 0.11, dot: 2.5, color: '#c4b5fd', angle: 150 },
+    { r: 110, opacity: 0.07, dot: 2.2, color: 'rgba(167,139,250,0.6)', angle: 290 },
   ];
   return (
     <g>
@@ -116,7 +109,7 @@ function Orbital({ x, y, w, h }: Box) {
         const radians = (ring.angle * Math.PI) / 180;
         return (
           <g key={ring.r}>
-            <circle cx={cx} cy={cy} r={radius} fill="none" stroke={`rgba(244,241,232,${ring.opacity})`} />
+            <circle cx={cx} cy={cy} r={radius} fill="none" stroke={`rgba(255,255,255,${ring.opacity})`} />
             <circle cx={cx + radius * Math.cos(radians)} cy={cy + radius * Math.sin(radians)} r={ring.dot} fill={ring.color} />
           </g>
         );
@@ -145,17 +138,17 @@ function FileGrid({ x, y, w, h }: Box) {
               width={chipW}
               height={24}
               rx={6}
-              fill={active ? 'rgba(138,180,255,0.14)' : 'rgba(244,241,232,0.04)'}
-              stroke={active ? 'rgba(138,180,255,0.55)' : 'none'}
+              fill={active ? 'rgba(167,139,250,0.15)' : 'rgba(255,255,255,0.03)'}
+              stroke={active ? 'rgba(167,139,250,0.45)' : 'none'}
             />
-            <rect x={cx + 8} y={cy + 8} width={8} height={8} rx={2} fill={file.endsWith('.css') ? TAG : file.endsWith('.json') ? LEDGER : STREAM} opacity={0.85} />
-            <text x={cx + 22} y={cy + 15.5} style={MONO} fontSize={9.5} fill={active ? PAPER : FOG}>
+            <rect x={cx + 8} y={cy + 8} width={8} height={8} rx={2} fill={file.endsWith('.css') ? '#38bdf8' : file.endsWith('.json') ? '#facc15' : '#61dafb'} opacity={0.8} />
+            <text x={cx + 22} y={cy + 15.5} style={MONO} fontSize={9.5} fill={active ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)'}>
               {file}
             </text>
           </g>
         );
       })}
-      <rect x={x + 1} y={y + h - 3} width={w * 0.38} height={1.5} fill={STREAM} opacity={0.8} />
+      <rect x={x + 1} y={y + h - 3} width={w * 0.38} height={1.5} fill="#a78bfa" opacity={0.7} />
     </g>
   );
 }
@@ -166,14 +159,14 @@ function CodeEditor({ x, y, w, h }: Box) {
   return (
     <g>
       <Window x={x} y={y} w={w} h={h} title="todos.ts" beam />
-      <text x={x + 10} y={y + 35} style={MONO} fontSize={8} fill={FOG}>
+      <text x={x + 10} y={y + 35} style={MONO} fontSize={8} fill="rgba(255,255,255,0.3)">
         todos.ts
       </text>
-      <line x1={x} y1={y + 40.5} x2={x + 56} y2={y + 40.5} stroke={STREAM} strokeOpacity={0.6} />
-      <rect x={x + 70} y={y + 29} width={40} height={6} rx={2} fill={STROKE} />
+      <line x1={x} y1={y + 40.5} x2={x + 56} y2={y + 40.5} stroke="rgba(192,132,252,0.35)" />
+      <rect x={x + 70} y={y + 29} width={40} height={6} rx={2} fill="rgba(255,255,255,0.04)" />
       {SKELETON.map((line, index) => (
         <g key={index}>
-          <text x={x + 20} y={top + index * lineHeight + 5} textAnchor="end" style={MONO} fontSize={7} fill="rgba(244,241,232,0.25)">
+          <text x={x + 20} y={top + index * lineHeight + 5} textAnchor="end" style={MONO} fontSize={7} fill="rgba(255,255,255,0.15)">
             {index + 1}
           </text>
           <rect
@@ -192,13 +185,13 @@ function CodeEditor({ x, y, w, h }: Box) {
 
 function Wireframe({ x, y, w, h }: Box) {
   const inner = w - 28;
-  const dashed = { fill: 'none', stroke: 'rgba(244,241,232,0.22)', strokeDasharray: '4 3' } as const;
+  const dashed = { fill: 'none', stroke: 'rgba(255,255,255,0.18)', strokeDasharray: '4 3' } as const;
   return (
     <g>
       <Window x={x} y={y} w={w} h={h} />
-      <rect x={x + 50} y={y + 6} width={w - 64} height={10} rx={3} fill={STROKE} />
+      <rect x={x + 50} y={y + 6} width={w - 64} height={10} rx={3} fill="rgba(255,255,255,0.06)" />
       <rect x={x + 14} y={y + 34} width={inner} height={16} rx={3} {...dashed} />
-      <rect x={x + 14} y={y + 60} width={inner * 0.62} height={10} rx={3} fill="rgba(244,241,232,0.08)" />
+      <rect x={x + 14} y={y + 60} width={inner * 0.62} height={10} rx={3} fill="rgba(255,255,255,0.06)" />
       <rect x={x + 14} y={y + 80} width={inner - 84} height={h - 130} rx={3} {...dashed} />
       <rect x={x + w - 84} y={y + 80} width={70} height={h - 130} rx={3} {...dashed} />
       <rect x={x + 14} y={y + h - 40} width={inner} height={26} rx={3} {...dashed} />
@@ -210,11 +203,11 @@ function Terminal({ x, y, w, h }: Box) {
   return (
     <g>
       <Window x={x} y={y} w={w} h={h} title="Terminal" beam />
-      <text x={x + 14} y={y + 46} style={MONO} fontSize={10.5} fill={PAPER}>
-        <tspan fill={SIGNAL}>$</tspan> npx shadcn add checkbox
+      <text x={x + 14} y={y + 46} style={MONO} fontSize={10.5} fill="rgba(255,255,255,0.6)">
+        <tspan fill="#22d3ee">$</tspan> npx shadcn add checkbox
       </text>
-      <text x={x + 14} y={y + 68} style={MONO} fontSize={10.5} fill={FOG}>
-        <tspan fill={STREAM}>⠋</tspan> Running...
+      <text x={x + 14} y={y + 68} style={MONO} fontSize={10.5} fill="rgba(255,255,255,0.35)">
+        <tspan fill="#22d3ee">⠋</tspan> Running...
       </text>
     </g>
   );
@@ -227,9 +220,9 @@ function Completion({ x, y, w, h }: Box) {
   const top = y + (h - size) / 2;
   return (
     <g transform={`translate(${left} ${top}) scale(${k})`}>
-      <circle cx={50} cy={50} r={58} fill="rgba(199,243,107,0.06)" />
-      <circle cx={50} cy={50} r={44} fill="none" stroke={SIGNAL} strokeOpacity={0.75} strokeWidth={2 / k} />
-      <path d="M30 52 L44 66 L70 36" fill="none" stroke={SIGNAL} strokeWidth={3 / k} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={50} cy={50} r={58} fill="rgba(74,222,128,0.06)" />
+      <circle cx={50} cy={50} r={44} fill="none" stroke="rgba(74,222,128,0.7)" strokeWidth={2 / k} />
+      <path d="M30 52 L44 66 L70 36" fill="none" stroke="rgba(74,222,128,0.85)" strokeWidth={3 / k} strokeLinecap="round" strokeLinejoin="round" />
     </g>
   );
 }
@@ -256,22 +249,22 @@ function Cell({ x, y, w, h, spec }: CellProps) {
   const artH = h - 110;
   return (
     <g>
-      <rect x={x} y={y} width={w} height={h} rx={14} fill={NODE} stroke={STROKE} />
+      <rect x={x} y={y} width={w} height={h} rx={12} fill={BG} stroke="rgba(255,255,255,0.08)" />
       <SceneArt x={x + 18} y={y + 16} w={w - 36} h={artH} spec={spec} />
       <text x={x + 18} y={y + artH + 42} style={MONO} fontSize={11} fill={FOG}>
         {spec.trigger}
       </text>
       {spec.context ? (
         <>
-          <text x={x + 18} y={y + artH + 66} fontSize={14} fontWeight={600} fill={PAPER}>
+          <text x={x + 18} y={y + artH + 66} fontSize={14} fontWeight={600} fill={WHITE}>
             {spec.context}
           </text>
-          <text x={x + 18} y={y + artH + 86} fontSize={14} fontWeight={500} fill={STREAM}>
+          <text x={x + 18} y={y + artH + 86} fontSize={14} fontWeight={500} fill={SHIMMER}>
             {spec.action}
           </text>
         </>
       ) : (
-        <text x={x + 18} y={y + artH + 66} fontSize={14} fontWeight={600} fill={PAPER}>
+        <text x={x + 18} y={y + artH + 66} fontSize={14} fontWeight={600} fill={WHITE}>
           {spec.action}
         </text>
       )}
@@ -284,7 +277,6 @@ function Wide() {
   const h = 300;
   return (
     <>
-      <Dots width={1200} height={636} color="rgba(244,241,232,0.07)" background={CANVAS} />
       {specs.map((spec, index) => (
         <Cell key={spec.scene} x={12 + (index % 3) * (w + 12)} y={12 + Math.floor(index / 3) * (h + 12)} w={w} h={h} spec={spec} />
       ))}
@@ -297,7 +289,6 @@ function Narrow() {
   const h = 300;
   return (
     <>
-      <Dots width={600} height={948} color="rgba(244,241,232,0.07)" background={CANVAS} />
       {specs.map((spec, index) => (
         <Cell key={spec.scene} x={12 + (index % 2) * (w + 12)} y={12 + Math.floor(index / 2) * (h + 12)} w={w} h={h} spec={spec} />
       ))}
