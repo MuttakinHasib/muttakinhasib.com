@@ -100,6 +100,16 @@ export const Glyph = {
       'M12.652 13.733h-6c-2.07 0-3.75-1.68-3.75-3.75s1.68-3.75 3.75-3.75h8.25m-1.725 1.874 1.92-1.92-1.92-1.92',
     ],
   },
+  TEXT_TYPE: {
+    box: 36,
+    strokeWidth: 2.25,
+    paths: ['M4.5 12.485V8.808h16.548v3.677m-8.274-3.677v18.386m-3.677 0h7.354m4.244-6.077H31.5m-6.669-4.941h6.67'],
+  },
+  REMOVE_BACKGROUND: {
+    box: 24,
+    strokeWidth: 1.5,
+    paths: ['M3 7.5 7.5 3m6.75 0L3 14.25M3 21 21 3m0 6.75L9.75 21M21 16.5 16.5 21'],
+  },
 } as const satisfies Record<string, EditorGlyph>;
 
 export function EditorIcon({ x, y, glyph, size, color, strokeWidth }: EditorIconProps) {

@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { EditorIcon, Glyph } from './editor-icons';
+import { type EditorGlyph, EditorIcon, Glyph } from './editor-icons';
 import { Dots, type Pt, VizFrame } from './primitives';
 import { VaseArt } from './VaseArt';
 
@@ -28,6 +28,14 @@ interface PropFieldProps extends Pt {
   w: number;
   prefix: string;
   value: string;
+  /** Draw a dropdown chevron, as on the blend mode select. */
+  menu?: boolean;
+}
+
+interface ToolButtonProps extends Pt {
+  w: number;
+  label: string;
+  glyph: EditorGlyph;
 }
 
 interface CompositorProps extends Pt {
@@ -134,9 +142,7 @@ function LayerRow({ x, y, w, name, badge, selected, icon }: LayerRowProps) {
       {icon === 'artboard' ? (
         <rect x={x + 10} y={y + 9} width={12} height={12} rx={2} fill="none" stroke={FOG} strokeDasharray="2 2" />
       ) : icon === 'text' ? (
-        <text x={x + 12} y={y + 20} className="v-kicker" fill={FOG}>
-          T
-        </text>
+        <EditorIcon x={x + 9} y={y + 8} glyph={Glyph.TEXT_TYPE} size={14} color={FOG} />
       ) : (
         <circle cx={x + 16} cy={y + 15} r={6} fill="#cdbfa6" />
       )}
@@ -152,15 +158,30 @@ function LayerRow({ x, y, w, name, badge, selected, icon }: LayerRowProps) {
   );
 }
 
-function PropField({ x, y, w, prefix, value }: PropFieldProps) {
+function PropField({ x, y, w, prefix, value, menu }: PropFieldProps) {
   return (
     <g>
       <rect x={x} y={y} width={w} height={28} rx={7} fill="#1f1f1d" stroke={STROKE} />
-      <text x={x + 10} y={y + 19} className="v-kicker" fill={FOG}>
-        {prefix}
-      </text>
-      <text x={x + (prefix ? 26 : 10)} y={y + 19} className="v-kicker" fill={PAPER}>
+      {prefix ? (
+        <text x={x + 10} y={y + 18} className="v-small" fill={FOG}>
+          {prefix}
+        </text>
+      ) : null}
+      <text x={x + (prefix ? 26 : 10)} y={y + 18} className="v-small" fill={PAPER}>
         {value}
+      </text>
+      {menu ? <EditorIcon x={x + w - 18} y={y + 10} glyph={Glyph.CHEVRON_DOWN} size={9} color={FOG} strokeWidth={2} /> : null}
+    </g>
+  );
+}
+
+function ToolButton({ x, y, w, label, glyph }: ToolButtonProps) {
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={30} rx={8} fill="#1f1f1d" stroke={STROKE} />
+      <EditorIcon x={x + 11} y={y + 7} glyph={glyph} size={16} color={PAPER} />
+      <text x={x + 36} y={y + 19.5} className="v-small" fill={PAPER}>
+        {label}
       </text>
     </g>
   );
@@ -169,7 +190,8 @@ function PropField({ x, y, w, prefix, value }: PropFieldProps) {
 /** Compositor: layers on the left, artboard in the middle, properties on the right. */
 function Compositor({ x, y, w, h, compact }: CompositorProps) {
   const layersW = compact ? 190 : 140;
-  const propsW = compact ? 200 : 178;
+  const propsW = 200;
+  const half = (propsW - 36) / 2;
   const stageX = x + layersW;
   const stageW = w - layersW - propsW;
   const propsX = x + w - propsW;
@@ -178,6 +200,7 @@ function Compositor({ x, y, w, h, compact }: CompositorProps) {
   const artX = stageX + (stageW - artW) / 2;
   const artY = y + (compact ? 40 : (h - artH) / 2 - 20);
   const center = artX + artW / 2;
+  const blendY = compact ? y + 60 : y + 196;
   return (
     <g>
       <rect x={x} y={y} width={w} height={h} rx={16} fill="#141413" stroke={STROKE} />
@@ -194,7 +217,7 @@ function Compositor({ x, y, w, h, compact }: CompositorProps) {
       {/* Stage */}
       <rect x={stageX} y={y + 1} width={stageW} height={h - 2} fill="#0b0b0b" />
       <VaseArt x={artX} y={artY} w={artW} h={artH} />
-      <text x={artX + 12} y={artY + 26} className="v-poster-sm" fill={INK}>
+      <text x={artX + 10} y={artY + artH - 9} className="v-small" fill={INK} fontWeight={700} letterSpacing="0.1em">
         SOFT LIGHT
       </text>
       <line x1={center} y1={artY - 12} x2={center} y2={artY + artH + 12} stroke={GUIDE} strokeWidth="1.25" />
@@ -210,57 +233,59 @@ function Compositor({ x, y, w, h, compact }: CompositorProps) {
       <circle cx={center} cy={artY + artH + 26} r={7} fill="none" stroke={PAPER} strokeWidth="1.3" />
       {!compact ? (
         <>
-          <rect x={stageX + 12} y={y + h - 46} width={110} height={32} rx={16} fill="#1f1f1d" stroke={STROKE} />
-          <text x={stageX + 28} y={y + h - 25} className="v-kicker" fill={FOG}>
-            ↶ ↷  59%
+          <rect x={stageX + 12} y={y + h - 46} width={124} height={32} rx={16} fill="#1f1f1d" stroke={STROKE} />
+          <EditorIcon x={stageX + 24} y={y + h - 38} glyph={Glyph.UNDO} size={16} color={FOG} />
+          <EditorIcon x={stageX + 46} y={y + h - 38} glyph={Glyph.REDO} size={16} color={FOG} />
+          <text x={stageX + 74} y={y + h - 25} className="v-small" fill={PAPER}>
+            59%
           </text>
+          <EditorIcon x={stageX + 108} y={y + h - 34} glyph={Glyph.CHEVRON_DOWN} size={9} color={FOG} strokeWidth={2} />
         </>
       ) : null}
 
-      {/* Properties */}
+      {/* Properties, in the editor's order */}
       <text x={propsX + 14} y={y + 30} className="v-label" fill={PAPER}>
         Vase
       </text>
-      <text x={propsX + 14} y={y + 56} className="v-kicker" fill={FOG}>
+      {!compact ? (
+        <>
+          <text x={propsX + 14} y={y + 60} className="v-small" fill={FOG}>
+            Position
+          </text>
+          <PropField x={propsX + 14} y={y + 68} w={half} prefix="X" value="128" />
+          <PropField x={propsX + 22 + half} y={y + 68} w={half} prefix="Y" value="64" />
+          <text x={propsX + 14} y={y + 122} className="v-small" fill={FOG}>
+            Dimension
+          </text>
+          <PropField x={propsX + 14} y={y + 130} w={half} prefix="W" value="420" />
+          <PropField x={propsX + 22 + half} y={y + 130} w={half} prefix="H" value="560" />
+          <line x1={propsX + 14} y1={y + 176} x2={propsX + propsW - 14} y2={y + 176} stroke={STROKE} />
+        </>
+      ) : null}
+      <text x={propsX + 14} y={blendY} className="v-small" fill={FOG}>
         Opacity
       </text>
-      <PropField x={propsX + 14} y={y + 64} w={(propsW - 36) / 2} prefix="%" value="100" />
-      <text x={propsX + 22 + (propsW - 36) / 2} y={y + 56} className="v-kicker" fill={FOG}>
-        Blend
+      <PropField x={propsX + 14} y={blendY + 8} w={half} prefix="%" value="100" />
+      <text x={propsX + 22 + half} y={blendY} className="v-small" fill={FOG}>
+        Blend Modes
       </text>
-      <PropField x={propsX + 22 + (propsW - 36) / 2} y={y + 64} w={(propsW - 36) / 2} prefix="" value="Multiply" />
-      <rect x={propsX + 14} y={y + 100} width={propsW - 28} height={BLEND_MODES.length * 24 + 12} rx={9} fill="#1f1f1d" stroke={STROKE} />
+      <PropField x={propsX + 22 + half} y={blendY + 8} w={half} prefix="" value="Multiply" menu />
+      <rect x={propsX + 14} y={blendY + 42} width={propsW - 28} height={BLEND_MODES.length * 24 + 12} rx={9} fill="#1f1f1d" stroke={STROKE} />
       {BLEND_MODES.map((mode, index) => (
         <g key={mode}>
-          {mode === 'Multiply' ? <rect x={propsX + 20} y={y + 106 + index * 24} width={propsW - 40} height={22} rx={5} fill="#2c2c29" /> : null}
-          <text x={propsX + 28} y={y + 121 + index * 24} className="v-kicker" fill={mode === 'Multiply' ? PAPER : FOG}>
+          {mode === 'Multiply' ? <rect x={propsX + 20} y={blendY + 48 + index * 24} width={propsW - 40} height={22} rx={5} fill="#2c2c29" /> : null}
+          <text x={propsX + 28} y={blendY + 63 + index * 24} className="v-small" fill={mode === 'Multiply' ? PAPER : FOG}>
             {mode}
           </text>
         </g>
       ))}
       {!compact ? (
         <>
-          <text x={propsX + 14} y={y + 310} className="v-kicker" fill={FOG}>
-            Position
-          </text>
-          <PropField x={propsX + 14} y={y + 318} w={(propsW - 36) / 2} prefix="X" value="128" />
-          <PropField x={propsX + 22 + (propsW - 36) / 2} y={y + 318} w={(propsW - 36) / 2} prefix="Y" value="64" />
-          <text x={propsX + 14} y={y + 370} className="v-kicker" fill={FOG}>
-            Dimension
-          </text>
-          <PropField x={propsX + 14} y={y + 378} w={(propsW - 36) / 2} prefix="W" value="420" />
-          <PropField x={propsX + 22 + (propsW - 36) / 2} y={y + 378} w={(propsW - 36) / 2} prefix="H" value="560" />
-          <text x={propsX + 14} y={y + 430} className="v-kicker" fill={FOG}>
+          <text x={propsX + 14} y={y + 452} className="v-small" fill={FOG}>
             Tools
           </text>
-          <rect x={propsX + 14} y={y + 438} width={propsW - 28} height={30} rx={15} fill="#1f1f1d" stroke={STROKE} />
-          <text x={propsX + 28} y={y + 458} className="v-kicker" fill={PAPER}>
-            T+ Create layers (AI)
-          </text>
-          <rect x={propsX + 14} y={y + 476} width={propsW - 28} height={30} rx={15} fill="#1f1f1d" stroke={STROKE} />
-          <text x={propsX + 28} y={y + 496} className="v-kicker" fill={PAPER}>
-            Remove background
-          </text>
+          <ToolButton x={propsX + 14} y={y + 462} w={propsW - 28} label="Create Layers" glyph={Glyph.TEXT_TYPE} />
+          <ToolButton x={propsX + 14} y={y + 500} w={propsW - 28} label="Remove Background" glyph={Glyph.REMOVE_BACKGROUND} />
         </>
       ) : null}
     </g>
@@ -347,7 +372,7 @@ function Narrow() {
 export function GenerativeFillVisual() {
   return (
     <VizFrame
-      label="Reconstruction of Generative Fill and Compositor. Generative Fill edits a node in place while the rest of the canvas blurs: an Inpaint toolbar with model, brush, eraser, and undo; a lavender mask painted over the vase; a prompt field; and an outpainting frame extended to the right with the new area shown in violet. Compositor shows layers (Artboard, an AI-extracted Soft light text layer, Vase, Shadow, Background), an artboard with a centre smart guide and selection handles, and properties with opacity, the blend-mode list with Multiply selected, position, dimensions, and AI tools."
+      label="Reconstruction of Generative Fill and Compositor. Generative Fill edits a node in place while the rest of the canvas blurs: an Inpaint toolbar with model, brush, eraser, and undo; a lavender mask painted over the vase; a prompt field; and an outpainting frame extended to the right with the new area shown in violet. Compositor shows layers (Artboard, an AI-extracted Soft light text layer, Vase, Shadow, Background), an artboard with a centre smart guide and selection handles, and properties with position, dimensions, opacity, the blend-mode list with Multiply selected, and the Create Layers and Remove Background tools."
       wide={<Wide />}
       narrow={<Narrow />}
     />
