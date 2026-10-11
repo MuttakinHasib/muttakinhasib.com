@@ -16,6 +16,7 @@ import {
 import '@xyflow/react/dist/base.css';
 import { useCallback, useMemo, useState } from 'react';
 import { type AppPlan, planApp, type WorkflowEdgeSpec, WorkflowKind, type WorkflowNodeSpec } from './app-plan';
+import { Glyph } from '../visuals/editor-icons';
 import { DemoFrame } from './DemoFrame';
 
 const PreviewRole = {
@@ -94,6 +95,17 @@ const edgeSpecs: WorkflowEdgeSpec[] = [
 ];
 
 const DEFAULT_SELECTION = new Set(['prompt', 'reference', 'image', 'upscale', 'video']);
+
+/** The editor's Build App icon, drawn from its own path data. */
+function AppsIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {Glyph.APPS.paths.map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </svg>
+  );
+}
 
 function WorkflowNodeView({ data, selected }: NodeProps<WorkflowNode>) {
   const outputType = OUTPUT_TYPE[data.kind];
@@ -240,7 +252,7 @@ export default function PlannerDemo() {
               onBlur={() => setHovering(false)}
               onClick={() => setPinned((value) => !value)}
             >
-              <span className="pd-build-icon" aria-hidden="true" />
+              <AppsIcon />
               Build App
             </button>
             <span id="pd-build-hint" className="pd-build-hint">

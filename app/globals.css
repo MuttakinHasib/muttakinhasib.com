@@ -3131,13 +3131,6 @@
   cursor: not-allowed;
 }
 
-.pd-build-icon {
-  width: 0.8rem;
-  height: 0.8rem;
-  border: 1.5px solid currentColor;
-  border-radius: 3px;
-}
-
 .pd-build-hint {
   max-width: 16rem;
   overflow: hidden;
