@@ -97,9 +97,9 @@ export const projects: Project[] = [
           'Measured on the live canvas on a 120 Hz display: median frame 8.3 ms, p95 9.3 ms once images are cached. A team result that includes my rendering work.',
       },
       {
-        value: '1,624',
+        value: '2,152',
         label: 'commits to the ImagineArt web app',
-        context: 'Feb to Sep 2026, excluding merges (2,152 with them). The most of 33 contributors.',
+        context: 'Every commit across all branches, Feb to Sep 2026. The most of 33 contributors.',
       },
       {
         value: '100M+',
