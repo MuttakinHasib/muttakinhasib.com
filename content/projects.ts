@@ -92,9 +92,9 @@ export const projects: Project[] = [
       },
       {
         value: '120 fps',
-        label: 'pan and zoom on an image-heavy workflow',
+        label: 'pan and zoom on an image- and video-heavy workflow',
         context:
-          'Measured on the live canvas on a 120 Hz display: median frame 8.3 ms, p95 9.3 ms once images are cached. A team result that includes my rendering work.',
+          'Measured on the live canvas on a 120 Hz display: median frame 8.3 ms, p95 9.3 ms once media is cached. A team result that includes my rendering work.',
       },
       {
         value: '2,152',
