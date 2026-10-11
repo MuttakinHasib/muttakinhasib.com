@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { EditorIcon } from './editor-icons';
 import { Lucide } from './lucide-icons';
-import { type Pt, VizFrame } from './primitives';
+import { Dots, type Pt, VizFrame } from './primitives';
 
 /**
  * The cocoding.ai Database Explorer on its Schema view, reconstructed after the
@@ -50,22 +50,21 @@ interface SchemaDiagramProps extends Pt {
   step: number;
 }
 
-const BG = '#0c0224';
-const PANEL = '#150a30';
-const LINE = 'rgba(255,255,255,0.1)';
-const WHITE = '#f5f5f5';
-const GRAY_200 = '#e5e7eb';
-const GRAY_300 = '#d1d5db';
-const GRAY_400 = '#9ca3af';
-const GRAY_500 = '#6b7280';
-const NODE = '#111827';
-const NODE_HEAD = '#1f2937';
-const NODE_STROKE = '#374151';
-const PK = '#facc15';
-const PK_TEXT = '#fde047';
-const FK = '#60a5fa';
-const FK_TEXT = '#93c5fd';
-const PURPLE = '#5c21a8';
+const CANVAS = '#0f0f0f';
+const CARD = '#1b1b1a';
+const RAISED = '#262624';
+const WELL = '#151514';
+const LINE = '#30302c';
+const PAPER = '#f4f1e8';
+const FOG = '#a9a79c';
+const MUTED = '#7a796f';
+const NODE = '#1b1b1a';
+const NODE_HEAD = '#232321';
+const NODE_STROKE = '#3a3a35';
+const PK = '#e6a03a';
+const PK_TEXT = '#f0b961';
+const FK = '#8ab4ff';
+const FK_TEXT = '#b8d0ff';
 
 const ROW = 24;
 const HEAD = 40;
@@ -105,16 +104,16 @@ function TableNode({ x, y, w, name, columns }: TableNodeProps) {
       <rect x={x} y={y} width={w} height={h} rx={8} fill={NODE} stroke={NODE_STROKE} />
       <path d={`M${x + 8} ${y}h${w - 16}a8 8 0 0 1 8 8v${HEAD - 8}H${x}V${y + 8}a8 8 0 0 1 8-8Z`} fill={NODE_HEAD} />
       <line x1={x} y1={y + HEAD} x2={x + w} y2={y + HEAD} stroke={NODE_STROKE} />
-      <EditorIcon x={x + 12} y={y + 12} glyph={Lucide.TABLE} size={16} color={GRAY_400} />
-      <text x={x + 36} y={y + 19} fontSize={13} fontWeight={600} fill="#f3f4f6">
+      <EditorIcon x={x + 12} y={y + 12} glyph={Lucide.TABLE} size={16} color={FOG} />
+      <text x={x + 36} y={y + 19} fontSize={13} fontWeight={600} fill={PAPER}>
         {name}
       </text>
-      <text x={x + 36} y={y + 33} fontSize={10.5} fill={GRAY_400}>
+      <text x={x + 36} y={y + 33} fontSize={10.5} fill={FOG}>
         public
       </text>
       {columns.map((column, index) => {
         const cy = rowY(y, index);
-        const color = column.key === ColumnKey.PRIMARY ? PK_TEXT : column.key === ColumnKey.FOREIGN ? FK_TEXT : GRAY_200;
+        const color = column.key === ColumnKey.PRIMARY ? PK_TEXT : column.key === ColumnKey.FOREIGN ? FK_TEXT : PAPER;
         return (
           <g key={column.name}>
             {column.key === ColumnKey.PRIMARY ? <EditorIcon x={x + 10} y={cy - 6} glyph={Lucide.KEY} size={12} color={PK} /> : null}
@@ -122,14 +121,14 @@ function TableNode({ x, y, w, name, columns }: TableNodeProps) {
             <text x={x + 28} y={cy + 4} fontSize={12} fill={color}>
               {column.name}
             </text>
-            <text x={x + w - 10} y={cy + 4} textAnchor="end" fontSize={10} fill={GRAY_400}>
+            <text x={x + w - 10} y={cy + 4} textAnchor="end" fontSize={10} fill={FOG}>
               {column.type}
             </text>
             {column.key === ColumnKey.PRIMARY ? (
-              <circle cx={x} cy={cy} r={4.5} fill="#eab308" stroke={NODE_HEAD} strokeWidth="2" />
+              <circle cx={x} cy={cy} r={4.5} fill={PK} stroke={CANVAS} strokeWidth="2" />
             ) : null}
             {column.key === ColumnKey.FOREIGN ? (
-              <circle cx={x + w} cy={cy} r={4.5} fill="#3b82f6" stroke={NODE_HEAD} strokeWidth="2" />
+              <circle cx={x + w} cy={cy} r={4.5} fill={FK} stroke={CANVAS} strokeWidth="2" />
             ) : null}
           </g>
         );
@@ -145,7 +144,7 @@ function Edge({ from, to }: EdgeProps) {
     <path
       d={`M${from.x + 4} ${from.y}C${from.x + bend} ${from.y} ${to.x - bend} ${to.y} ${to.x - 4} ${to.y}`}
       fill="none"
-      stroke={GRAY_500}
+      stroke={MUTED}
       strokeWidth="2"
       strokeDasharray="5 5"
     />
@@ -157,10 +156,10 @@ function Canvas({ x, y, w, h, dotsId }: CanvasProps) {
     <g>
       <defs>
         <pattern id={dotsId} width="20" height="20" patternUnits="userSpaceOnUse">
-          <circle cx="1" cy="1" r="1" fill="rgba(255,255,255,0.09)" />
+          <circle cx="1" cy="1" r="1" fill="rgba(244,241,232,0.08)" />
         </pattern>
       </defs>
-      <rect x={x} y={y} width={w} height={h} rx={8} fill="#0a0320" stroke={LINE} />
+      <rect x={x} y={y} width={w} height={h} rx={8} fill={CANVAS} stroke={LINE} />
       <rect x={x} y={y} width={w} height={h} rx={8} fill={`url(#${dotsId})`} />
     </g>
   );
@@ -172,7 +171,7 @@ function Controls({ x, y }: Pt) {
     <g>
       <rect x={x} y={y} width={36} height={104} rx={8} fill={NODE} stroke={NODE_STROKE} />
       {icons.map((glyph, index) => (
-        <EditorIcon key={index} x={x + 10} y={y + 8 + index * 24} glyph={glyph} size={16} color={GRAY_300} />
+        <EditorIcon key={index} x={x + 10} y={y + 8 + index * 24} glyph={glyph} size={16} color={PAPER} />
       ))}
     </g>
   );
@@ -181,12 +180,12 @@ function Controls({ x, y }: Pt) {
 function DatabaseSelector({ x, y, w }: WidthProps) {
   return (
     <g>
-      <rect x={x} y={y} width={w} height={34} rx={8} fill="rgba(255,255,255,0.04)" stroke={LINE} />
-      <EditorIcon x={x + 12} y={y + 9} glyph={Lucide.DATABASE} size={15} color={GRAY_400} />
-      <text x={x + 36} y={y + 21.5} fontSize={13} fill={WHITE}>
+      <rect x={x} y={y} width={w} height={34} rx={8} fill={WELL} stroke={LINE} />
+      <EditorIcon x={x + 12} y={y + 9} glyph={Lucide.DATABASE} size={15} color={FOG} />
+      <text x={x + 36} y={y + 21.5} fontSize={13} fill={PAPER}>
         todo_app
       </text>
-      <EditorIcon x={x + w - 26} y={y + 10} glyph={Lucide.CHEVRON_DOWN} size={14} color={GRAY_400} />
+      <EditorIcon x={x + w - 26} y={y + 10} glyph={Lucide.CHEVRON_DOWN} size={14} color={FOG} />
     </g>
   );
 }
@@ -206,10 +205,10 @@ function ViewTabs({ x, y }: Pt) {
               width={32}
               height={30}
               rx={6}
-              fill={active ? 'rgba(255,255,255,0.1)' : 'none'}
-              stroke={active ? 'rgba(255,255,255,0.2)' : 'none'}
+              fill={active ? RAISED : 'none'}
+              stroke={active ? FOG : 'none'}
             />
-            <EditorIcon x={x + index * 38 + 8} y={y + 7} glyph={glyph} size={16} color={active ? WHITE : GRAY_400} />
+            <EditorIcon x={x + index * 38 + 8} y={y + 7} glyph={glyph} size={16} color={active ? PAPER : FOG} />
           </g>
         );
       })}
@@ -220,9 +219,9 @@ function ViewTabs({ x, y }: Pt) {
 function SearchField({ x, y, w }: WidthProps) {
   return (
     <g>
-      <rect x={x} y={y} width={w} height={34} rx={8} fill="rgba(255,255,255,0.04)" stroke={LINE} />
-      <EditorIcon x={x + 12} y={y + 10} glyph={Lucide.SEARCH} size={14} color={GRAY_500} />
-      <text x={x + 34} y={y + 21.5} fontSize={13} fill={GRAY_500}>
+      <rect x={x} y={y} width={w} height={34} rx={8} fill={WELL} stroke={LINE} />
+      <EditorIcon x={x + 12} y={y + 10} glyph={Lucide.SEARCH} size={14} color={MUTED} />
+      <text x={x + 34} y={y + 21.5} fontSize={13} fill={MUTED}>
         Search tables or columns...
       </text>
     </g>
@@ -251,57 +250,59 @@ function Wide() {
   const dots = useId();
   return (
     <>
-      <rect x={8} y={8} width={1184} height={584} rx={12} fill={BG} stroke="rgba(255,255,255,0.08)" />
+      <Dots width={1200} height={600} color="rgba(244,241,232,0.07)" background={CANVAS} />
+      <rect x={8} y={8} width={1184} height={584} rx={14} fill={CARD} stroke={LINE} />
 
       {/* Explorer on its database tab */}
-      <path d="M20 8h280v584H20a12 12 0 0 1-12-12V20A12 12 0 0 1 20 8Z" fill={PANEL} />
-      <rect x={20} y={20} width={268} height={44} rx={10} fill="rgba(255,255,255,0.03)" stroke={LINE} />
-      <EditorIcon x={32} y={34} glyph={Lucide.FOLDER_TREE} size={16} color={GRAY_400} />
-      <text x={54} y={46.5} fontSize={13} fill={GRAY_400}>
+      <path d="M22 8h278v584H22a14 14 0 0 1-14-14V22A14 14 0 0 1 22 8Z" fill={WELL} />
+      <line x1={300} y1={8} x2={300} y2={592} stroke={LINE} />
+      <rect x={20} y={20} width={268} height={44} rx={10} fill={CARD} stroke={LINE} />
+      <EditorIcon x={32} y={34} glyph={Lucide.FOLDER_TREE} size={16} color={FOG} />
+      <text x={54} y={46.5} fontSize={13} fill={FOG}>
         Explorer
       </text>
-      <rect x={130} y={28} width={40} height={28} rx={8} fill={PURPLE} />
-      <EditorIcon x={142} y={34} glyph={Lucide.DATABASE} size={16} color={WHITE} />
+      <rect x={130} y={28} width={40} height={28} rx={8} fill={RAISED} stroke={FOG} />
+      <EditorIcon x={142} y={34} glyph={Lucide.DATABASE} size={16} color={PAPER} />
       <DatabaseSelector x={20} y={78} w={268} />
       <ViewTabs x={20} y={124} />
-      <EditorIcon x={262} y={131} glyph={Lucide.PLUG} size={16} color={GRAY_400} />
+      <EditorIcon x={262} y={131} glyph={Lucide.PLUG} size={16} color={FOG} />
       <line x1={20} y1={168} x2={288} y2={168} stroke={LINE} />
       {Object.keys(tables)
         .sort()
         .map((name, index) => (
           <g key={name}>
-            <EditorIcon x={28} y={186 + index * 34} glyph={Lucide.TABLE} size={15} color={GRAY_400} />
-            <text x={52} y={198 + index * 34} fontSize={13} fill={GRAY_200}>
+            <EditorIcon x={28} y={186 + index * 34} glyph={Lucide.TABLE} size={15} color={FOG} />
+            <text x={52} y={198 + index * 34} fontSize={13} fill={PAPER}>
               {name}
             </text>
-            <text x={280} y={198 + index * 34} textAnchor="end" fontSize={11} fill={GRAY_500}>
+            <text x={280} y={198 + index * 34} textAnchor="end" fontSize={11} fill={MUTED}>
               Table
             </text>
           </g>
         ))}
 
       {/* Editor tabs: a table tab, and the schema tab in front */}
-      <rect x={316} y={20} width={104} height={30} rx={6} fill="#1f1736" stroke={LINE} />
-      <EditorIcon x={326} y={27} glyph={Lucide.TABLE} size={15} color={GRAY_300} />
-      <text x={348} y={39.5} fontSize={13} fill={GRAY_300}>
+      <rect x={316} y={20} width={104} height={30} rx={6} fill={WELL} stroke={LINE} />
+      <EditorIcon x={326} y={27} glyph={Lucide.TABLE} size={15} color={PAPER} />
+      <text x={348} y={39.5} fontSize={13} fill={PAPER}>
         todos
       </text>
-      <rect x={428} y={20} width={116} height={30} rx={6} fill="rgba(3,7,18,0.5)" stroke="#838383" />
-      <EditorIcon x={438} y={27} glyph={Lucide.NETWORK} size={15} color={GRAY_300} />
-      <text x={460} y={39.5} fontSize={13} fill={GRAY_300}>
+      <rect x={428} y={20} width={116} height={30} rx={6} fill={RAISED} stroke={FOG} />
+      <EditorIcon x={438} y={27} glyph={Lucide.NETWORK} size={15} color={PAPER} />
+      <text x={460} y={39.5} fontSize={13} fill={PAPER}>
         Schema
       </text>
 
       {/* Schema toolbar */}
       <SearchField x={316} y={62} w={300} />
-      <rect x={990} y={62} width={86} height={34} rx={8} fill="rgba(255,255,255,0.05)" stroke={LINE} />
-      <EditorIcon x={1002} y={72} glyph={Lucide.REFRESH} size={14} color={GRAY_300} />
-      <text x={1024} y={83.5} fontSize={13} fill={GRAY_300}>
+      <rect x={990} y={62} width={86} height={34} rx={8} fill={RAISED} stroke={LINE} />
+      <EditorIcon x={1002} y={72} glyph={Lucide.REFRESH} size={14} color={PAPER} />
+      <text x={1024} y={83.5} fontSize={13} fill={PAPER}>
         Reset
       </text>
-      <rect x={1084} y={62} width={92} height={34} rx={8} fill="rgba(255,255,255,0.05)" stroke={LINE} />
-      <EditorIcon x={1096} y={72} glyph={Lucide.DOWNLOAD} size={14} color={GRAY_300} />
-      <text x={1118} y={83.5} fontSize={13} fill={GRAY_300}>
+      <rect x={1084} y={62} width={92} height={34} rx={8} fill={RAISED} stroke={LINE} />
+      <EditorIcon x={1096} y={72} glyph={Lucide.DOWNLOAD} size={14} color={PAPER} />
+      <text x={1118} y={83.5} fontSize={13} fill={PAPER}>
         Export
       </text>
 
@@ -316,10 +317,11 @@ function Narrow() {
   const dots = useId();
   return (
     <>
-      <rect x={8} y={8} width={584} height={644} rx={12} fill={BG} stroke="rgba(255,255,255,0.08)" />
+      <Dots width={600} height={660} color="rgba(244,241,232,0.07)" background={CANVAS} />
+      <rect x={8} y={8} width={584} height={644} rx={14} fill={CARD} stroke={LINE} />
       <DatabaseSelector x={20} y={20} w={300} />
       <ViewTabs x={336} y={22} />
-      <EditorIcon x={556} y={29} glyph={Lucide.PLUG} size={16} color={GRAY_400} />
+      <EditorIcon x={556} y={29} glyph={Lucide.PLUG} size={16} color={FOG} />
       <SearchField x={20} y={66} w={560} />
       <Canvas x={16} y={112} w={568} h={532} dotsId={dots} />
       <SchemaDiagram x={30} y={128} w={160} step={190} />

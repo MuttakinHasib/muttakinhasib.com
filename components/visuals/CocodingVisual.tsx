@@ -1,14 +1,15 @@
 import { useId } from 'react';
 import { type EditorGlyph, EditorIcon } from './editor-icons';
 import { Lucide } from './lucide-icons';
-import { type Pt, VizFrame } from './primitives';
+import { Dots, type Pt, VizFrame } from './primitives';
 
 /**
  * The cocoding.ai workspace mid-generation, reconstructed after the frontend's
- * release branch: chat with the streamed agent timeline (agent blocks with
- * their instructions, a Bash group, a file group), the activity bar of the
- * collapsed explorer, and the preview area's live activity animation, where a
- * code window types out the file being written above the activity message.
+ * main branch and drawn in this portfolio's mock palette: chat with the
+ * streamed agent timeline (agent blocks with their instructions, a Bash group,
+ * a file group), the preview with the explorer collapsed to its activity bar,
+ * and the live activity animation typing the file being written above the
+ * activity message.
  */
 
 interface CodeToken {
@@ -36,6 +37,10 @@ interface GroupHeaderProps extends Pt {
   streaming?: boolean;
 }
 
+interface InstructionsProps extends Pt {
+  lines: readonly string[];
+}
+
 interface CodeWindowProps extends Pt {
   w: number;
   h: number;
@@ -47,51 +52,47 @@ interface ToggleProps extends Pt {
   compact?: boolean;
 }
 
-const BG = '#0c0224';
-const PANEL = '#150a30';
-const RAIL = '#160f2c';
-const LINE = 'rgba(255,255,255,0.1)';
-const WHITE = '#f5f5f5';
-const GRAY = '#d1d5db';
-const ASH_400 = '#9c9c9c';
-const ASH_500 = '#838383';
-const PURPLE = '#9b66e1';
-const SHIMMER = '#b794f6';
-const AMBER = 'rgba(251,191,36,0.55)';
-const GREEN = '#266a40';
-const INK = '#070113';
+interface LegendItemProps extends Pt {
+  color: string;
+  label: string;
+  dim?: boolean;
+}
+
+const CANVAS = '#0f0f0f';
+const NODE = '#1b1b1a';
+const RAISED = '#262624';
+const WELL = '#151514';
+const STROKE = '#30302c';
+const PAPER = '#f4f1e8';
+const FOG = '#a9a79c';
+const MUTED = '#7a796f';
+const INK = '#171815';
+const SIGNAL = '#c7f36b';
+const STREAM = '#8ab4ff';
+const LEDGER = '#e6a03a';
+const TAG = '#f0c2d4';
 const MONO = { fontFamily: 'var(--font-mono)' } as const;
 /** Measured advance of one 11px mono character, for placing the typing cursor. */
 const MONO_CHAR = 7.7;
 
-/** vs2015, the theme the placeholder's code stream renders with. */
-const VS = {
-  keyword: '#569cd6',
-  string: '#d69d85',
-  attr: '#9cdcfe',
-  fn: '#dcdcaa',
-  type: '#4ec9b0',
-  text: '#dcdcdc',
-} as const;
-
 const todoList: CodeToken[][] = [
-  [{ text: 'import', color: VS.keyword }, { text: ' { useState } ' }, { text: 'from', color: VS.keyword }, { text: " 'react'", color: VS.string }],
-  [{ text: 'import', color: VS.keyword }, { text: ' { TodoItem } ' }, { text: 'from', color: VS.keyword }, { text: " './TodoItem'", color: VS.string }],
+  [{ text: 'import', color: STREAM }, { text: ' { useState } ' }, { text: 'from', color: STREAM }, { text: " 'react'", color: SIGNAL }],
+  [{ text: 'import', color: STREAM }, { text: ' { TodoItem } ' }, { text: 'from', color: STREAM }, { text: " './TodoItem'", color: SIGNAL }],
   [],
-  [{ text: 'export function', color: VS.keyword }, { text: ' TodoList', color: VS.fn }, { text: '({ todos }) {' }],
-  [{ text: '  const', color: VS.keyword }, { text: ' [show, setShow] = ' }, { text: 'useState', color: VS.fn }, { text: '(' }, { text: "'all'", color: VS.string }, { text: ')' }],
-  [{ text: '  const', color: VS.keyword }, { text: ' items = ' }, { text: 'filterBy', color: VS.fn }, { text: '(todos, show)' }],
-  [{ text: '  return', color: VS.keyword }, { text: ' (' }],
-  [{ text: '    <', color: ASH_500 }, { text: 'ul', color: VS.keyword }, { text: ' className', color: VS.attr }, { text: '=' }, { text: '"space-y-2"', color: VS.string }, { text: '>', color: ASH_500 }],
-  [{ text: '      {items.' }, { text: 'map', color: VS.fn }, { text: '((todo) => (' }],
+  [{ text: 'export function', color: STREAM }, { text: ' TodoList({ todos }) {' }],
+  [{ text: '  const', color: STREAM }, { text: ' [show, setShow] = useState(' }, { text: "'all'", color: SIGNAL }, { text: ')' }],
+  [{ text: '  const', color: STREAM }, { text: ' items = filterBy(todos, show)' }],
+  [{ text: '  return', color: STREAM }, { text: ' (' }],
+  [{ text: '    <ul', color: TAG }, { text: ' className=' }, { text: '"space-y-2"', color: SIGNAL }, { text: '>', color: TAG }],
+  [{ text: '      {items.map((todo) => (' }],
 ];
 
 function AgentAvatar({ x, y }: Pt) {
   return (
     <g>
-      <circle cx={x} cy={y} r={9} fill="#2d2350" />
-      <circle cx={x} cy={y - 2.5} r={3} fill="#c4b5fd" />
-      <path d={`M${x - 5} ${y + 6}a5 4 0 0 1 10 0`} fill="#c4b5fd" />
+      <circle cx={x} cy={y} r={9} fill={RAISED} stroke={STROKE} />
+      <circle cx={x} cy={y - 2.5} r={3} fill={FOG} />
+      <path d={`M${x - 5} ${y + 6}a5 4 0 0 1 10 0`} fill={FOG} />
     </g>
   );
 }
@@ -99,12 +100,12 @@ function AgentAvatar({ x, y }: Pt) {
 function AgentRow({ x, y, name, open }: AgentRowProps) {
   const [first, ...rest] = name.split(' ');
   return (
-    <g opacity={open ? 1 : 0.7}>
+    <g opacity={open ? 1 : 0.6}>
       <AgentAvatar x={x + 9} y={y} />
-      <text x={x + 26} y={y + 4.5} className="v-small" fontWeight={600} fill={WHITE}>
+      <text x={x + 26} y={y + 4.5} className="v-small" fontWeight={600} fill={PAPER}>
         {open ? (
           <>
-            {first} <tspan fill={SHIMMER}>{rest.join(' ')}</tspan>
+            {first} <tspan fill={STREAM}>{rest.join(' ')}</tspan>
           </>
         ) : (
           name
@@ -119,11 +120,11 @@ function GroupHeader({ x, y, glyph, title, streaming }: GroupHeaderProps) {
   const [first, ...rest] = title.split(' ');
   return (
     <g>
-      <EditorIcon x={x} y={y - 12} glyph={glyph} size={15} color={WHITE} />
-      <text x={x + 22} y={y} className="v-small" fontWeight={600} fill={WHITE}>
+      <EditorIcon x={x} y={y - 12} glyph={glyph} size={15} color={PAPER} />
+      <text x={x + 22} y={y} className="v-small" fontWeight={600} fill={PAPER}>
         {streaming ? (
           <>
-            {first} <tspan fill={SHIMMER}>{rest.join(' ')}</tspan>
+            {first} <tspan fill={STREAM}>{rest.join(' ')}</tspan>
           </>
         ) : (
           title
@@ -133,24 +134,17 @@ function GroupHeader({ x, y, glyph, title, streaming }: GroupHeaderProps) {
   );
 }
 
-function ReactFileIcon({ x, y }: Pt) {
-  return (
-    <g fill="none" stroke="#61dafb" strokeWidth="1">
-      <ellipse cx={x} cy={y} rx={6.5} ry={2.4} />
-      <ellipse cx={x} cy={y} rx={6.5} ry={2.4} transform={`rotate(60 ${x} ${y})`} />
-      <ellipse cx={x} cy={y} rx={6.5} ry={2.4} transform={`rotate(120 ${x} ${y})`} />
-      <circle cx={x} cy={y} r={1.2} fill="#61dafb" stroke="none" />
-    </g>
-  );
-}
-
 function FileRow({ x, y, name, path }: FileRowProps) {
+  const cx = x + 7;
+  const cy = y - 4;
   return (
     <g>
-      <ReactFileIcon x={x + 7} y={y - 4} />
-      <text x={x + 22} y={y} className="v-small" fill={WHITE}>
+      {[0, 60, 120].map((angle) => (
+        <ellipse key={angle} cx={cx} cy={cy} rx={6} ry={2.3} fill="none" stroke={STREAM} transform={`rotate(${angle} ${cx} ${cy})`} />
+      ))}
+      <text x={x + 22} y={y} className="v-small" fill={PAPER}>
         {name}
-        <tspan dx={8} fill={ASH_500} fontSize={11.5}>
+        <tspan dx={8} fill={MUTED} fontSize={11.5}>
           {path}
         </tspan>
       </text>
@@ -160,8 +154,8 @@ function FileRow({ x, y, name, path }: FileRowProps) {
 
 function Wordmark({ x, y }: Pt) {
   return (
-    <text x={x} y={y} className="v-label" fontWeight={800} fill={WHITE}>
-      cocoding<tspan fill={PURPLE}>.ai</tspan>
+    <text x={x} y={y} className="v-label" fontWeight={800} fill={PAPER}>
+      cocoding<tspan fill={STREAM}>.ai</tspan>
     </text>
   );
 }
@@ -169,10 +163,25 @@ function Wordmark({ x, y }: Pt) {
 function UserBubble({ x, y, w }: WidthProps) {
   return (
     <g>
-      <rect x={x} y={y} width={w} height={32} rx={8} fill="#241c3e" />
-      <text x={x + 14} y={y + 20.5} className="v-small" fill={WHITE}>
+      <rect x={x} y={y} width={w} height={32} rx={8} fill={RAISED} />
+      <text x={x + 14} y={y + 20.5} className="v-small" fill={PAPER}>
         build a todo app
       </text>
+    </g>
+  );
+}
+
+function Instructions({ x, y, lines }: InstructionsProps) {
+  return (
+    <g>
+      <text x={x} y={y} fontSize={10} fontWeight={700} fontStyle="italic" letterSpacing="0.08em" fill={LEDGER}>
+        INSTRUCTIONS
+      </text>
+      {lines.map((line, index) => (
+        <text key={line} x={x} y={y + 20 + index * 18} className="v-small" fill={FOG}>
+          {line}
+        </text>
+      ))}
     </g>
   );
 }
@@ -181,13 +190,13 @@ function UserBubble({ x, y, w }: WidthProps) {
 function BashGroup({ x, y, w }: WidthProps) {
   return (
     <g>
-      <rect x={x} y={y} width={w} height={86} rx={4} fill="none" stroke={LINE} />
+      <rect x={x} y={y} width={w} height={86} rx={4} fill="none" stroke={STROKE} />
       <GroupHeader x={x + 10} y={y + 23} glyph={Lucide.TERMINAL} title="Bash" />
-      <text x={x + 10} y={y + 49} className="v-small" fontWeight={700} fill={ASH_400}>
+      <text x={x + 10} y={y + 49} className="v-small" fontWeight={700} fill={FOG}>
         Install dependencies
       </text>
-      <rect x={x + 10} y={y + 58} width={w - 20} height={20} rx={3} fill="#1b1330" />
-      <text x={x + 18} y={y + 72} style={MONO} fontSize={11} fill={ASH_400}>
+      <rect x={x + 10} y={y + 58} width={w - 20} height={20} rx={3} fill={WELL} />
+      <text x={x + 18} y={y + 72} style={MONO} fontSize={11} fill={FOG}>
         $ npm install
       </text>
     </g>
@@ -198,7 +207,7 @@ function BashGroup({ x, y, w }: WidthProps) {
 function FileGroup({ x, y, w }: WidthProps) {
   return (
     <g>
-      <rect x={x} y={y} width={w} height={102} rx={4} fill="none" stroke={LINE} />
+      <rect x={x} y={y} width={w} height={102} rx={4} fill="none" stroke={STREAM} strokeOpacity={0.45} />
       <GroupHeader x={x + 10} y={y + 23} glyph={Lucide.FILE_PLUS} title="Creating components" streaming />
       <FileRow x={x + 8} y={y + 48} name="TodoItem.tsx" path="src/components" />
       <FileRow x={x + 8} y={y + 70} name="AddTodo.tsx" path="src/components" />
@@ -210,18 +219,17 @@ function FileGroup({ x, y, w }: WidthProps) {
 function ChatInput({ x, y, w }: WidthProps) {
   return (
     <g>
-      <rect x={x - 3} y={y - 3} width={w + 6} height={94} rx={14} fill="none" stroke="#7a32d7" strokeOpacity={0.18} strokeWidth="6" />
-      <rect x={x} y={y} width={w} height={88} rx={12} fill="#1a1233" stroke="#7a32d7" strokeOpacity={0.6} />
-      <text x={x + 18} y={y + 28} className="v-small" fill="#8b8696">
+      <rect x={x} y={y} width={w} height={88} rx={12} fill={WELL} stroke={STROKE} />
+      <text x={x + 18} y={y + 28} className="v-small" fill={MUTED}>
         Your message here...
       </text>
-      <EditorIcon x={x + 16} y={y + 56} glyph={Lucide.IMAGE_PLUS} size={15} color="#8b8696" />
-      <text x={x + 38} y={y + 68} className="v-small" fill="#8b8696">
+      <EditorIcon x={x + 16} y={y + 56} glyph={Lucide.IMAGE_PLUS} size={15} color={MUTED} />
+      <text x={x + 38} y={y + 68} className="v-small" fill={MUTED}>
         Image
       </text>
-      <rect x={x + w - 82} y={y + 50} width={70} height={28} rx={6} fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.25)" />
-      <EditorIcon x={x + w - 71} y={y + 57} glyph={Lucide.SEND} size={14} color={GRAY} />
-      <text x={x + w - 51} y={y + 68.5} className="v-small" fill={GRAY}>
+      <rect x={x + w - 82} y={y + 50} width={70} height={28} rx={6} fill={RAISED} stroke={STROKE} />
+      <EditorIcon x={x + w - 71} y={y + 57} glyph={Lucide.SEND} size={14} color={PAPER} />
+      <text x={x + w - 51} y={y + 68.5} className="v-small" fill={PAPER}>
         Send
       </text>
     </g>
@@ -232,22 +240,46 @@ function ChatInput({ x, y, w }: WidthProps) {
 function ModeToggle({ x, y, compact }: ToggleProps) {
   return (
     <g>
-      <rect x={x} y={y} width={164} height={26} rx={13} fill="rgba(12,2,36,0.6)" stroke="rgba(255,255,255,0.06)" />
-      <EditorIcon x={x + 12} y={y + 6} glyph={Lucide.CODE} size={14} color="#9ca3af" />
-      <text x={x + 32} y={y + 17.5} className="v-small" fill="#9ca3af">
+      <rect x={x} y={y} width={164} height={26} rx={13} fill={WELL} stroke={STROKE} />
+      <EditorIcon x={x + 12} y={y + 6} glyph={Lucide.CODE} size={14} color={MUTED} />
+      <text x={x + 32} y={y + 17.5} className="v-small" fill={MUTED}>
         Code
       </text>
-      <rect x={x + 72} y={y + 2} width={90} height={22} rx={11} fill="rgba(20,10,40,0.5)" stroke={ASH_500} />
-      <EditorIcon x={x + 82} y={y + 6} glyph={Lucide.EYE} size={14} color={GRAY} />
-      <text x={x + 102} y={y + 17.5} className="v-small" fill={GRAY}>
+      <rect x={x + 72} y={y + 2} width={90} height={22} rx={11} fill={RAISED} stroke={FOG} />
+      <EditorIcon x={x + 82} y={y + 6} glyph={Lucide.EYE} size={14} color={PAPER} />
+      <text x={x + 102} y={y + 17.5} className="v-small" fill={PAPER}>
         Preview
       </text>
       {compact ? null : (
         <>
-          <EditorIcon x={x + 178} y={y + 5} glyph={Lucide.DOWNLOAD} size={16} color={GRAY} />
-          <EditorIcon x={x + 204} y={y + 5} glyph={Lucide.SHARE} size={16} color={GRAY} />
+          <EditorIcon x={x + 178} y={y + 5} glyph={Lucide.DOWNLOAD} size={16} color={FOG} />
+          <EditorIcon x={x + 204} y={y + 5} glyph={Lucide.SHARE} size={16} color={FOG} />
         </>
       )}
+    </g>
+  );
+}
+
+function PublishButton({ x, y }: Pt) {
+  return (
+    <g>
+      <rect x={x} y={y} width={88} height={26} rx={13} fill={SIGNAL} />
+      <EditorIcon x={x + 11} y={y + 6} glyph={Lucide.GLOBE} size={14} color={INK} />
+      <text x={x + 31} y={y + 17.5} className="v-small" fontWeight={600} fill={INK}>
+        Publish
+      </text>
+    </g>
+  );
+}
+
+function GithubButton({ x, y }: Pt) {
+  return (
+    <g>
+      <rect x={x} y={y} width={78} height={26} rx={13} fill={PAPER} />
+      <EditorIcon x={x + 11} y={y + 6} glyph={Lucide.GITHUB} size={14} color={INK} />
+      <text x={x + 31} y={y + 17.5} className="v-small" fontWeight={600} fill={INK}>
+        Github
+      </text>
     </g>
   );
 }
@@ -265,41 +297,41 @@ function CodeWindow({ x, y, w, h, lines, beamId }: CodeWindowProps) {
     <g>
       <defs>
         <linearGradient id={beamId} x1="0" x2="1">
-          <stop offset="0" stopColor="#a855f7" stopOpacity="0" />
-          <stop offset="0.5" stopColor="#a855f7" />
-          <stop offset="1" stopColor="#22d3ee" />
+          <stop offset="0" stopColor={STREAM} stopOpacity="0" />
+          <stop offset="0.55" stopColor={STREAM} />
+          <stop offset="1" stopColor={SIGNAL} />
         </linearGradient>
       </defs>
-      <rect x={x} y={y} width={w} height={h} rx={8} fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.1)" />
-      <rect x={x + 0.5} y={y + 0.5} width={w - 1} height={27.5} rx={8} fill="rgba(255,255,255,0.03)" />
-      <line x1={x} y1={y + 28} x2={x + w} y2={y + 28} stroke="rgba(255,255,255,0.1)" />
-      {['#ff5f57', '#febc2e', '#28c840'].map((color, index) => (
-        <circle key={color} cx={x + 16 + index * 14} cy={y + 14} r={4.5} fill={color} opacity={0.6} />
+      <rect x={x} y={y} width={w} height={h} rx={8} fill={WELL} stroke={STROKE} />
+      <path d={`M${x + 8} ${y}h${w - 16}a8 8 0 0 1 8 8v20H${x}V${y + 8}a8 8 0 0 1 8-8Z`} fill={NODE} />
+      <line x1={x} y1={y + 28} x2={x + w} y2={y + 28} stroke={STROKE} />
+      {[0, 1, 2].map((index) => (
+        <circle key={index} cx={x + 16 + index * 14} cy={y + 14} r={4.5} fill={STROKE} />
       ))}
-      <text x={x + 62} y={y + 18} style={MONO} fontSize={11} fill="rgba(255,255,255,0.4)">
+      <text x={x + 62} y={y + 18} style={MONO} fontSize={11} fill={FOG}>
         TodoList.tsx
       </text>
-      <line x1={x} y1={y + 50} x2={x + w} y2={y + 50} stroke="rgba(255,255,255,0.06)" />
-      <text x={x + 12} y={y + 43} style={MONO} fontSize={9} fill="rgba(255,255,255,0.3)">
+      <line x1={x} y1={y + 50} x2={x + w} y2={y + 50} stroke={STROKE} strokeOpacity={0.6} />
+      <text x={x + 12} y={y + 43} style={MONO} fontSize={9} fill={MUTED}>
         TodoList.tsx
       </text>
-      <line x1={x} y1={y + 49.5} x2={x + 84} y2={y + 49.5} stroke="rgba(192,132,252,0.3)" />
-      <rect x={x + 98} y={y + 35} width={48} height={8} rx={2} fill="rgba(255,255,255,0.04)" />
+      <line x1={x} y1={y + 49.5} x2={x + 84} y2={y + 49.5} stroke={STREAM} strokeOpacity={0.6} />
+      <rect x={x + 98} y={y + 35} width={48} height={8} rx={2} fill={RAISED} />
       {lines.map((tokens, index) => (
         <g key={index}>
-          <text x={x + 26} y={codeTop + index * lineHeight} textAnchor="end" style={MONO} fontSize={9} fill="rgba(255,255,255,0.15)">
+          <text x={x + 26} y={codeTop + index * lineHeight} textAnchor="end" style={MONO} fontSize={9} fill={MUTED}>
             {index + 1}
           </text>
-          <text x={x + 36} y={codeTop + index * lineHeight} style={MONO} fontSize={11} fill={VS.text} xmlSpace="preserve">
+          <text x={x + 36} y={codeTop + index * lineHeight} style={MONO} fontSize={11} fill={PAPER} xmlSpace="preserve">
             {tokens.map((token, tokenIndex) => (
-              <tspan key={tokenIndex} fill={token.color ?? VS.text}>
+              <tspan key={tokenIndex} fill={token.color ?? PAPER}>
                 {token.text}
               </tspan>
             ))}
           </text>
         </g>
       ))}
-      <rect x={x + 37 + lastLineLength * MONO_CHAR} y={codeTop + lastLine * lineHeight - 10} width={6} height={13} fill="#794de1" />
+      <rect x={x + 37 + lastLineLength * MONO_CHAR} y={codeTop + lastLine * lineHeight - 10} width={6} height={13} fill={STREAM} />
       <path d={`M${x + w - 170} ${y}h162a8 8 0 0 1 8 8v70`} fill="none" stroke={`url(#${beamId})`} strokeWidth="1.5" strokeLinecap="round" />
     </g>
   );
@@ -307,9 +339,20 @@ function CodeWindow({ x, y, w, h, lines, beamId }: CodeWindowProps) {
 
 function ActivityMessage({ x, y }: Pt) {
   return (
-    <text x={x} y={y} textAnchor="middle" className="v-label" fill={WHITE}>
-      Crafting interface: <tspan fill={SHIMMER}>Creating TodoList.tsx</tspan> component
+    <text x={x} y={y} textAnchor="middle" className="v-label" fill={PAPER}>
+      Crafting interface: <tspan fill={STREAM}>Creating TodoList.tsx</tspan> component
     </text>
+  );
+}
+
+function LegendItem({ x, y, color, label, dim }: LegendItemProps) {
+  return (
+    <g opacity={dim ? 0.6 : 1}>
+      <rect x={x} y={y} width={14} height={14} rx={4} fill={CANVAS} stroke={color} strokeWidth="2" />
+      <text x={x + 22} y={y + 12} className="v-kicker" fill={PAPER}>
+        {label}
+      </text>
+    </g>
   );
 }
 
@@ -317,70 +360,44 @@ function Wide() {
   const beam = useId();
   return (
     <>
-      <rect x={8} y={8} width={1184} height={744} rx={12} fill={BG} stroke="rgba(255,255,255,0.08)" />
-
-      {/* App sidebar */}
-      <rect x={16} y={16} width={40} height={728} rx={10} fill={RAIL} stroke="rgba(255,255,255,0.05)" />
-      <EditorIcon x={26} y={30} glyph={Lucide.PANEL_LEFT} size={20} color={GRAY} />
-      <line x1={24} y1={62} x2={48} y2={62} stroke={LINE} />
-      <EditorIcon x={27} y={76} glyph={Lucide.SQUARE_PLUS} size={18} color={GRAY} />
-      <EditorIcon x={27} y={108} glyph={Lucide.MESSAGE_SQUARE} size={18} color={GRAY} />
-      <rect x={19} y={138} width={34} height={22} rx={6} fill="rgba(255,255,255,0.1)" />
-      <text x={36} y={153} textAnchor="middle" fontSize={10} fill={GRAY}>
-        To…
-      </text>
-      <EditorIcon x={27} y={176} glyph={Lucide.LAYOUT_GRID} size={18} color={GRAY} />
-      <line x1={24} y1={680} x2={48} y2={680} stroke={LINE} />
-      <EditorIcon x={27} y={692} glyph={Lucide.SETTINGS} size={18} color={GRAY} />
-      <circle cx={36} cy={728} r={10} fill="#5c21a8" />
+      <Dots width={1200} height={760} color="rgba(244,241,232,0.07)" background={CANVAS} />
 
       {/* Chat with the streamed agent timeline */}
-      <Wordmark x={76} y={50} />
-      <EditorIcon x={336} y={36} glyph={Lucide.ARROW_LEFT_FROM_LINE} size={18} color={GRAY} />
-      <UserBubble x={228} y={74} w={128} />
-      <circle cx={82} cy={132} r={9} fill="#8b5cf6" />
-      <AgentRow x={100} y={132} name="Backend Developer" />
-      <AgentRow x={100} y={166} name="Frontend Developer" open />
-      <EditorIcon x={250} y={160} glyph={Lucide.CHEVRON_DOWN} size={13} color={WHITE} />
-      <line x1={109} y1={182} x2={109} y2={470} stroke={LINE} />
-      <text x={124} y={202} fontSize={10} fontWeight={700} fontStyle="italic" letterSpacing="0.08em" fill={AMBER}>
-        INSTRUCTIONS
-      </text>
-      <text x={124} y={222} className="v-small" fill={ASH_400}>
-        Build the todo UI: a list, an add
-      </text>
-      <text x={124} y={240} className="v-small" fill={ASH_400}>
-        form, and done and active filters.
-      </text>
-      <BashGroup x={124} y={256} w={232} />
-      <FileGroup x={124} y={354} w={232} />
-      <ChatInput x={72} y={652} w={284} />
+      <rect x={40} y={40} width={380} height={640} rx={16} fill={NODE} stroke={STROKE} />
+      <Wordmark x={62} y={78} />
+      <EditorIcon x={390} y={64} glyph={Lucide.ARROW_LEFT_FROM_LINE} size={16} color={FOG} />
+      <UserBubble x={268} y={100} w={130} />
+      <circle cx={70} cy={162} r={8} fill={STREAM} />
+      <AgentRow x={86} y={162} name="Backend Developer" />
+      <AgentRow x={86} y={196} name="Frontend Developer" open />
+      <EditorIcon x={236} y={190} glyph={Lucide.CHEVRON_DOWN} size={13} color={PAPER} />
+      <line x1={95} y1={212} x2={95} y2={512} stroke={STROKE} />
+      <Instructions x={110} y={232} lines={['Build the todo UI: a list, an add', 'form, and done and active filters.']} />
+      <BashGroup x={110} y={288} w={290} />
+      <FileGroup x={110} y={388} w={290} />
+      <ChatInput x={56} y={576} w={348} />
 
-      {/* Explorer collapsed to its activity bar */}
-      <rect x={372} y={8} width={48} height={744} fill={PANEL} />
-      <line x1={420} y1={8} x2={420} y2={752} stroke="rgba(75,85,99,0.2)" />
-      <rect x={380} y={40} width={32} height={32} rx={6} fill="rgba(255,255,255,0.08)" />
-      <EditorIcon x={386} y={46} glyph={Lucide.FOLDER_TREE} size={20} color={WHITE} />
-      <EditorIcon x={386} y={86} glyph={Lucide.DATABASE} size={20} color={ASH_400} />
-
-      {/* Workspace toolbar */}
-      <rect x={432} y={18} width={748} height={42} rx={10} fill="rgba(255,255,255,0.025)" stroke={LINE} />
-      <ModeToggle x={444} y={26} />
-      <rect x={986} y={26} width={84} height={26} rx={13} fill={GREEN} />
-      <EditorIcon x={996} y={32} glyph={Lucide.GLOBE} size={14} color={GRAY} />
-      <text x={1016} y={43.5} className="v-small" fill={GRAY}>
-        Publish
+      {/* Preview, with the explorer collapsed to its activity bar */}
+      <rect x={450} y={40} width={710} height={640} rx={16} fill={NODE} stroke={STROKE} />
+      <path d="M466 40h32v640h-32a16 16 0 0 1-16-16V56a16 16 0 0 1 16-16Z" fill={WELL} />
+      <line x1={498} y1={40} x2={498} y2={680} stroke={STROKE} />
+      <rect x={458} y={58} width={32} height={32} rx={6} fill={RAISED} />
+      <EditorIcon x={464} y={64} glyph={Lucide.FOLDER_TREE} size={20} color={PAPER} />
+      <EditorIcon x={464} y={104} glyph={Lucide.DATABASE} size={20} color={MUTED} />
+      <ModeToggle x={514} y={56} />
+      <PublishButton x={938} y={56} />
+      <GithubButton x={1034} y={56} />
+      <EditorIcon x={1126} y={61} glyph={Lucide.SLIDERS} size={16} color={FOG} />
+      <line x1={498} y1={98} x2={1160} y2={98} stroke={STROKE} />
+      <text x={518} y={130} className="v-kicker" fill={FOG}>
+        preview, while the agents work
       </text>
-      <rect x={1076} y={26} width={76} height={26} rx={13} fill={GRAY} />
-      <EditorIcon x={1086} y={32} glyph={Lucide.GITHUB} size={14} color={INK} />
-      <text x={1106} y={43.5} className="v-small" fill={INK}>
-        Github
-      </text>
-      <EditorIcon x={1158} y={31} glyph={Lucide.SLIDERS} size={16} color={GRAY} />
+      <CodeWindow x={639} y={226} w={380} h={240} lines={todoList} beamId={beam} />
+      <ActivityMessage x={829} y={512} />
 
-      {/* Preview area while agents write: the live activity animation */}
-      <CodeWindow x={616} y={226} w={380} h={240} lines={todoList} beamId={beam} />
-      <ActivityMessage x={806} y={508} />
+      <LegendItem x={40} y={714} color={STREAM} label="streaming now" />
+      <LegendItem x={220} y={714} color={LEDGER} label="agent instructions" />
+      <LegendItem x={430} y={714} color={FOG} label="finished agent" dim />
     </>
   );
 }
@@ -389,26 +406,23 @@ function Narrow() {
   const beam = useId();
   return (
     <>
-      <rect x={8} y={8} width={584} height={744} rx={12} fill={BG} stroke="rgba(255,255,255,0.08)" />
-      <Wordmark x={26} y={46} />
-      <ModeToggle x={410} y={26} compact />
-      <line x1={8} y1={66} x2={592} y2={66} stroke={LINE} />
+      <Dots width={600} height={760} color="rgba(244,241,232,0.07)" background={CANVAS} />
 
-      <UserBubble x={430} y={80} w={146} />
-      <AgentRow x={24} y={134} name="Backend Developer" />
-      <AgentRow x={24} y={166} name="Frontend Developer" open />
-      <line x1={33} y1={182} x2={33} y2={320} stroke={LINE} />
-      <text x={48} y={202} fontSize={10} fontWeight={700} fontStyle="italic" letterSpacing="0.08em" fill={AMBER}>
-        INSTRUCTIONS
-      </text>
-      <text x={48} y={222} className="v-small" fill={ASH_400}>
-        Build the todo UI: a list, an add form, and filters.
-      </text>
-      <FileGroup x={48} y={236} w={300} />
+      <rect x={16} y={16} width={568} height={364} rx={16} fill={NODE} stroke={STROKE} />
+      <Wordmark x={36} y={52} />
+      <UserBubble x={418} y={30} w={146} />
+      <AgentRow x={36} y={98} name="Backend Developer" />
+      <AgentRow x={36} y={130} name="Frontend Developer" open />
+      <line x1={45} y1={146} x2={45} y2={358} stroke={STROKE} />
+      <Instructions x={60} y={166} lines={['Build the todo UI: a list, an add form, and filters.']} />
+      <FileGroup x={60} y={204} w={320} />
 
-      <CodeWindow x={110} y={346} w={380} h={200} lines={todoList.slice(0, 7)} beamId={beam} />
-      <ActivityMessage x={300} y={584} />
-      <ChatInput x={24} y={640} w={552} />
+      <rect x={16} y={396} width={568} height={348} rx={16} fill={NODE} stroke={STROKE} />
+      <ModeToggle x={32} y={410} compact />
+      <PublishButton x={480} y={410} />
+      <line x1={16} y1={450} x2={584} y2={450} stroke={STROKE} />
+      <CodeWindow x={110} y={470} w={380} h={196} lines={todoList.slice(0, 7)} beamId={beam} />
+      <ActivityMessage x={300} y={712} />
     </>
   );
 }
@@ -416,7 +430,7 @@ function Narrow() {
 export function CocodingVisual() {
   return (
     <VizFrame
-      label="Reconstruction of the cocoding.ai workspace mid-generation. The chat shows the streamed agent timeline: a finished Backend Developer block and a streaming Frontend Developer block with its instructions, a Bash group running npm install, and a Creating components file group listing TodoItem.tsx, AddTodo.tsx, and TodoList.tsx. The explorer is collapsed to its Files and Database activity bar, Preview is selected next to Publish and Github, and the preview area shows a code window typing TodoList.tsx above the message Crafting interface: Creating TodoList.tsx component."
+      label="Reconstruction of the cocoding.ai workspace mid-generation. The chat shows the streamed agent timeline: a finished Backend Developer block and a streaming Frontend Developer block with its instructions, a Bash group running npm install, and a Creating components file group listing TodoItem.tsx, AddTodo.tsx, and TodoList.tsx. The preview has the explorer collapsed to its Files and Database activity bar, Preview selected beside Publish and Github, and a code window typing TodoList.tsx above the message Crafting interface: Creating TodoList.tsx component."
       wide={<Wide />}
       narrow={<Narrow />}
     />
