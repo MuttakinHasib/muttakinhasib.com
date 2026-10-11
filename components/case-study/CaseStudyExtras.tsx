@@ -1,4 +1,6 @@
 import type { JSX } from 'react';
+import { ActivityPreviewVisual } from '@/components/visuals/ActivityPreviewVisual';
+import { DatabaseExplorerVisual } from '@/components/visuals/DatabaseExplorerVisual';
 import { GroupConnectionVisual } from '@/components/visuals/GroupConnectionVisual';
 import { NodeShelfVisual } from '@/components/visuals/NodeShelfVisual';
 import { ProjectSlug } from '@/content/types';
@@ -49,8 +51,36 @@ function AppBuilderExtras() {
   );
 }
 
+function CocodingExtras() {
+  return (
+    <>
+      <CaseSection id="activity-preview" title="A preview that shows the work" wide>
+        <ActivityPreviewVisual />
+        <p>
+          A generated app has nothing to preview until it boots, and the agents can work for minutes before that.
+          Instead of a spinner, the preview animates whatever they are doing, picked from the tool in use: a code
+          window filling with the file being written, a wireframe for components and pages, a file grid while they
+          read, a terminal while commands run. One timer holds each step until its message has finished animating
+          in, then swaps the picture and the text together, so fast bursts of events stay readable.
+        </p>
+        <p className="type-small text-graphite">Original reconstructions after the live preview states.</p>
+      </CaseSection>
+      <CaseSection id="database-explorer" title="Database Explorer" wide>
+        <DatabaseExplorerVisual />
+        <p>
+          The Database Explorer lets people look inside their app’s database without leaving the IDE. It connects
+          over its own WebSocket and opens each view as an editor tab: a filterable, paginated table with a record
+          editor, a SQL editor that runs on Cmd/Ctrl + Enter and keeps a query history, and a schema diagram that ELK
+          lays out top-down, with search, reset, and PNG or SVG export. I wrote all of it.
+        </p>
+      </CaseSection>
+    </>
+  );
+}
+
 const extras: Partial<Record<ProjectSlug, () => JSX.Element>> = {
   [ProjectSlug.APP_BUILDER]: AppBuilderExtras,
+  [ProjectSlug.COCODING]: CocodingExtras,
 };
 
 /** Project-specific sections that sit between implementation and outcomes. */
