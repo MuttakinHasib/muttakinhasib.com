@@ -29,7 +29,7 @@ export const experience: Experience[] = [
           'Improved canvas rendering by ~20% and built canvas components adopted across 45, 30, and 29 node types.',
           'Built Generative Fill and Compositor, two AI image editors.',
           'Developed AI video and audio nodes, including Ad Maker, Storyboard, Sound Effects, and Combine Video, and rebuilt the audio/video merger as a multi-track timeline.',
-          'Delivered Creative Analyzer for enterprise clients: ad-effectiveness predictions through a third-party scoring API, a schema-driven test wizard, reports for 3 ad formats, and PDF/XLSX/CSV export.',
+          'Delivered Creative Analyzer for enterprise clients: ad-effectiveness predictions through Brainsuite’s scoring API, a schema-driven test wizard, reports for 3 ad formats, and PDF/XLSX/CSV export.',
         ],
       },
     ],

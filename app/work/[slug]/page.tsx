@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense, ViewTransition } from 'react';
 import { CaseStudyDemo } from '@/components/case-study/CaseStudyDemo';
+import { CaseStudyExtras } from '@/components/case-study/CaseStudyExtras';
 import { CaseSection, NoteList } from '@/components/case-study/CaseSection';
 import { ContactSection } from '@/components/contact/ContactSection';
 import { MetricList } from '@/components/home/SelectedWork';
@@ -196,6 +197,8 @@ async function CaseStudy({ params }: CaseStudyProps) {
           <CaseStudyDemo slug={project.slug} />
           <NoteList notes={project.implementation} variant="compact" />
         </CaseSection>
+
+        <CaseStudyExtras slug={project.slug} />
 
         <CaseSection id="outcomes" title="Outcomes">
           <MetricList metrics={project.outcomes} className="cs-metrics" />

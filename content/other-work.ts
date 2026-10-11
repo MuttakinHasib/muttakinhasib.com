@@ -16,7 +16,7 @@ export const otherWork: OtherWork[] = [
     company: 'ImagineArt',
     title: 'Creative Analyzer',
     description:
-      'Ad-effectiveness predictions for enterprise clients through a third-party scoring API, with a schema-driven test wizard, reports for 3 ad formats, and PDF/XLSX/CSV export.',
+      'Ad-effectiveness predictions for enterprise clients through Brainsuite’s scoring API, with a schema-driven test wizard, reports for 3 ad formats, and PDF/XLSX/CSV export.',
   },
   {
     company: 'iGOT.ai',
