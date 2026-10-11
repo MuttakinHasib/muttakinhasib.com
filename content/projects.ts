@@ -16,11 +16,11 @@ export const projects: Project[] = [
     highlights: [
       'A graph planner derives each app’s entry inputs and final outputs from dependency and reachability rules.',
       'One-click “Build App” from any canvas selection, with a live preview on hover.',
-      'Canvas rendering improved by about 20% with zoom-aware image loading and identity-based memoization.',
+      'Canvas rendering about 20% faster: image, video, and import nodes load only the resolution their zoom needs.',
     ],
     overview: [
       'ImagineArt Workflows lets creators chain AI image and video models on a node-based canvas. I architected and launched App Builder, which turns those workflows into publishable, monetizable apps with in-editor test runs and a guided publish flow.',
-      'Alongside it, I built shared canvas components that the rest of the platform adopted: one action toolbar, one resize system, and one floating results carousel, now used across dozens of node types.',
+      'Around it, I worked across the canvas itself: zoom-aware media loading, group connections that wire a whole selection in one drag, shared node components adopted across dozens of node types, and nodes such as Creative Analyzer, Ad Maker, Storyboard, and the Combine Audio & Video timeline.',
     ],
     context: [
       'A workflow graph makes sense to the person who built it. An app has to make sense to everyone else. To publish one, the system needs to know which nodes are the app’s inputs, which are its results, and which are internal steps the end user should never see.',
@@ -29,8 +29,8 @@ export const projects: Project[] = [
     built: [
       'Architected and launched App Builder for ImagineArt Workflows: in-editor test runs and a guided publish flow.',
       'Built one-click “Build App” from any canvas selection, using a graph planner that derives entry inputs and final outputs from dependency and reachability rules.',
-      'Added a live preview of the resulting app on hover, before anything is created.',
-      'Improved canvas rendering by about 20% via zoom-aware image loading (6 resolution tiers) and identity-based memoization.',
+      'Previewed the plan on hover: planned inputs and outputs light up on the canvas before anything is created, from the same planner the click uses.',
+      'Improved canvas rendering by about 20% via zoom-aware media loading (6 resolution tiers across image, video, and import nodes) and identity-based memoization.',
       'Built group connections: drag a whole section or multi-selection onto a node and every member wires into the node’s roomiest compatible input, with type validation and slots added up to the input’s limit.',
       'Engineered reusable canvas components: a config-driven action toolbar used by 45 node types, a resize system used by 30, and a floating results carousel with inertial panning used by 29.',
     ],
@@ -40,8 +40,8 @@ export const projects: Project[] = [
         body: 'A selection can be a whole workflow or a fragment of one. The app’s inputs and outputs had to be inferred from how the selected nodes depend on each other, not from manual configuration.',
       },
       {
-        title: 'Keeping an image-heavy canvas responsive',
-        body: 'Workflow nodes render generated images and video at every zoom level. Loading full-resolution media everywhere makes panning and zooming expensive.',
+        title: 'Keeping a media-heavy canvas responsive',
+        body: 'Workflow nodes show generated images and video at every zoom level. Loading full-resolution media everywhere makes panning and zooming expensive, and re-rendering media on every frame makes it worse.',
       },
       {
         title: 'Consistency across dozens of node types',
@@ -54,12 +54,12 @@ export const projects: Project[] = [
         body: 'The planner walks dependencies and reachability inside the selection to find where data enters and where final results leave. The creator selects; the system works out the contract.',
       },
       {
-        title: 'Show the app before building it',
-        body: 'A live preview on hover shows the app the planner would produce, so creators can adjust a selection before anything is created.',
+        title: 'Show the plan before building it',
+        body: 'Hovering Build App paints the plan onto the canvas: inputs glow violet, outputs amber, everything else dims. The hover and the click share one planner, so what is shown is exactly what gets built.',
       },
       {
         title: 'Load only the pixels the zoom level needs',
-        body: 'Images load from one of 6 resolution tiers based on the current zoom, and node components memoize on data identity so unrelated updates don’t re-render them.',
+        body: 'Image, video, and import nodes pick one of 6 resolution variations by zoom bucket. A node re-renders only when zoom crosses a bucket, never per frame, so panning leaves media alone, and node renders memoize on data identity.',
       },
       {
         title: 'Configure shared components per node type',
@@ -73,7 +73,7 @@ export const projects: Project[] = [
       },
       {
         title: 'Zoom-aware media',
-        body: 'Six resolution tiers mapped to zoom ranges, combined with identity-based memoization of node renders.',
+        body: 'Six resolution tiers for image, video, and import nodes, level-of-detail thumbnails when zoomed out, and re-renders only when zoom crosses a tier.',
       },
       {
         title: 'Group connections',
@@ -88,7 +88,7 @@ export const projects: Project[] = [
       {
         value: '~20%',
         label: 'faster canvas rendering',
-        context: 'From zoom-aware image loading and identity-based memoization.',
+        context: 'From zoom-aware image and video loading and identity-based memoization.',
       },
       {
         value: '120 fps',
@@ -107,11 +107,11 @@ export const projects: Project[] = [
         context: 'The scale of the product I shipped into, not users I acquired.',
       },
     ],
-    stack: ['React', 'TypeScript', 'React Flow', 'Graph algorithms', 'Rendering performance'],
+    stack: ['React', 'TypeScript', 'React Flow', 'Zustand', 'TanStack Query', 'WebSockets', 'Graph algorithms', 'Rendering performance'],
     capabilities: [CapabilityId.INTERACTIVE, CapabilityId.AI],
     related: [ProjectSlug.GENERATIVE_FILL, ProjectSlug.IGOT],
     seoDescription:
-      'Case study: how Muttakin Islam Hasib architected App Builder for ImagineArt Workflows, turning node-based AI workflows into publishable apps with a reachability-based graph planner and ~20% faster canvas rendering.',
+      'Case study: how Muttakin Islam Hasib architected App Builder for ImagineArt Workflows, turning node-based AI workflows into publishable apps with a reachability-based graph planner, and made the canvas ~20% faster with zoom-aware image and video loading.',
   },
   {
     slug: ProjectSlug.GENERATIVE_FILL,
@@ -132,7 +132,7 @@ export const projects: Project[] = [
     ],
     overview: [
       'I built two AI image editors for ImagineArt. Generative Fill handles inpainting and outpainting. Compositor is a multi-layer editor built on Konva.',
-      'Both had to feel like creative software rather than a form that submits a prompt: direct manipulation first, generation in the background.',
+      'Both had to feel like creative software rather than a form that submits a prompt: direct manipulation first, generation in the background. Generative Fill edits a node in place while the rest of the workflow blurs; Compositor opens a full editor with layers, an artboard, and properties.',
     ],
     context: [
       'Generation takes time, and editing is a loop. If every brush stroke waits on a model round trip, people stop experimenting.',

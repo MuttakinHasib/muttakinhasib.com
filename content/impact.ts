@@ -20,7 +20,7 @@ export const impact: ImpactEntry[] = [
     value: '~20%',
     claim: 'faster canvas rendering',
     context:
-      'Zoom-aware image loading across 6 resolution tiers, plus identity-based memoization of node renders. The live canvas now pans and zooms at 120 fps on a 120 Hz display (median frame 8.3 ms, measured).',
+      'Zoom-aware loading across 6 resolution tiers for image and video nodes, plus identity-based memoization of node renders. The live canvas pans and zooms at 120 fps on a 120 Hz display (median frame 8.3 ms, measured).',
     project: ProjectSlug.APP_BUILDER,
     source: 'ImagineArt Workflows',
     emphasis: Emphasis.LEAD,

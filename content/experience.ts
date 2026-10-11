@@ -26,7 +26,7 @@ export const experience: Experience[] = [
         period: 'Feb 2026 – Sep 2026',
         points: [
           'Architected and launched App Builder for ImagineArt Workflows, with one-click “Build App” from any canvas selection.',
-          'Improved canvas rendering by ~20% and built canvas components adopted across 45, 30, and 29 node types.',
+          'Improved canvas rendering by ~20% with zoom-aware image and video loading, and built canvas components adopted across 45, 30, and 29 node types.',
           'Built group connections that wire a whole section or selection into a node in one drag, validated against supported input types.',
           'Top contributor to the web app: 2,152 commits between Feb and Sep 2026.',
           'Built Generative Fill and Compositor, two AI image editors.',
