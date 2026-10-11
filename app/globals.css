@@ -2443,6 +2443,7 @@
 
   .sd-label {
     font-weight: 600;
+    overflow-wrap: anywhere;
   }
 
   .sd-detail {
@@ -2461,7 +2462,7 @@
 
   @media (width >= 40rem) {
     .sd-event {
-      grid-template-columns: 2rem 4.75rem 7rem minmax(0, 1fr) auto;
+      grid-template-columns: 2rem 4.75rem 11rem minmax(0, 1fr) auto;
     }
 
     .sd-detail,

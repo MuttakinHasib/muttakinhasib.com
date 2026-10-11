@@ -65,7 +65,7 @@ export const experience: Experience[] = [
         period: 'Nov 2024 – Feb 2026',
         points: [
           'Architected and built the frontend from first commit to production.',
-          'Built a browser IDE around Monaco and a real-time AI chat streaming multi-agent output over SSE and WebSockets.',
+          'Built a browser IDE around Monaco, a Database Explorer with auto-laid-out ER diagrams, and a real-time AI chat streaming multi-agent output over SSE into a live timeline.',
           'Improved web performance by 80% and localized the platform into 16 languages.',
         ],
       },

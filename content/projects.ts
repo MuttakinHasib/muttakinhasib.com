@@ -212,12 +212,13 @@ export const projects: Project[] = [
     summary:
       'A browser IDE and real-time AI chat that turn a prompt into a working full-stack app, built from the first commit to production.',
     highlights: [
-      'Browser IDE: Monaco, file explorer, multi-tab xterm.js terminals on Kubernetes pods, live preview.',
-      'Multi-agent output streamed over SSE and WebSockets into a live timeline.',
+      'Browser IDE: Monaco, a file explorer, Output and Terminal xterm.js sessions on each chat’s Kubernetes pod, and a live preview.',
+      'Agent output streamed over SSE into a live timeline, while the preview animates the step in progress.',
       'Web performance improved by 80%, reaching Lighthouse 100 SEO, 100 Accessibility, and 91 Performance.',
     ],
     overview: [
       'cocoding.ai turns natural-language prompts into full-stack SaaS applications. I architected and built its frontend from the first commit to production in Next.js, React, and TypeScript, and defined the state, API, and edge-auth layers.',
+      'Around them I built the Database Explorer, the WebSocket layer behind chat, code generation, files, and terminal, and the live preview that shows what the agents are doing while they work.',
       'By the end, I had written 67% of the frontend’s commits, and 73% of the code still in production was mine.',
     ],
     context: [
@@ -226,16 +227,18 @@ export const projects: Project[] = [
     ],
     built: [
       'Architected and built the frontend from first commit to production (Next.js, React, TypeScript), including the state (Zustand, TanStack Query), API, and edge-auth layers.',
-      'Built a browser-based IDE around Monaco Editor: file explorer, multi-tab xterm.js terminal attached to Kubernetes pods, live preview, and a Database Explorer with auto-laid-out ER diagrams (React Flow, ELK.js).',
-      'Designed a real-time AI chat that streams multi-agent output over SSE and WebSockets into a live timeline of tool calls, file edits, and commands.',
-      'Engineered a reusable WebSocket layer for 4 real-time channels (chat, code generation, files, terminal) with token refresh, capped auto-reconnect, heartbeats, and tab-focus recovery.',
+      'Built a browser-based IDE around Monaco Editor: a file explorer, Output and Terminal xterm.js sessions attached to each chat’s Kubernetes pod, and a live preview.',
+      'Built the Database Explorer: Tables, Query, and Schema views with a SQL editor and query history, a filterable, paginated data table with a record editor, and ER diagrams auto-laid-out with React Flow and ELK.js.',
+      'Designed a real-time AI chat that streams multi-agent output over SSE into a live timeline: a block per specialist agent with its instructions, then grouped file operations and Bash commands as they happen.',
+      'Built the live activity preview: while agents work, the preview animates the current step (code typing into the file being written, a terminal, a file grid) above a message such as “Crafting interface: Creating TodoList.tsx component”.',
+      'Engineered a reusable WebSocket layer for 4 real-time channels (chat, code generation, files, terminal) with token refresh, auto-reconnect capped at 5 attempts, ping/pong heartbeats, and tab-focus recovery.',
       'Improved web performance by 80% through code splitting, dynamic imports, critical-CSS inlining, and React re-render profiling.',
       'Localized the platform and MDX blog into 16 languages (next-intl), with JSON-LD, sitemaps, and hreflang SEO.',
     ],
     challenges: [
       {
         title: 'Making remote work visible',
-        body: 'Multi-agent generation produces a stream of tool calls, file edits, and commands. The interface had to present them as they happened, in order.',
+        body: 'Multi-agent generation produces a stream of agent hand-offs, file edits, and commands, while the preview has nothing to show until the app boots. The interface had to present the work as it happened, in order.',
       },
       {
         title: 'Four real-time channels that must not drop',
@@ -249,11 +252,11 @@ export const projects: Project[] = [
     decisions: [
       {
         title: 'A timeline, not a spinner',
-        body: 'Agent output streams into a live timeline of tool calls, file edits, and commands, so progress is legible step by step.',
+        body: 'Agent output streams into a live timeline of agent blocks, file groups, and Bash commands, and the empty preview animates the step in progress, so progress is legible step by step.',
       },
       {
         title: 'One WebSocket layer for every channel',
-        body: 'A shared layer handles token refresh, capped auto-reconnect, heartbeats, and tab-focus recovery for all 4 channels.',
+        body: 'One base service handles token refresh, auto-reconnect capped at 5 attempts, ping/pong heartbeats, and tab-focus recovery, and each of the 4 channels extends it.',
       },
       {
         title: 'Load the IDE only when it’s needed',
@@ -263,11 +266,11 @@ export const projects: Project[] = [
     implementation: [
       {
         title: 'Browser IDE',
-        body: 'Monaco Editor, a file explorer, multi-tab xterm.js terminals attached to Kubernetes pods, and a live preview.',
+        body: 'Monaco Editor, a file explorer that collapses to an activity bar, Output and Terminal xterm.js sessions attached to the chat’s Kubernetes pod, and a live preview.',
       },
       {
         title: 'Database Explorer',
-        body: 'Auto-laid-out ER diagrams built with React Flow and ELK.js.',
+        body: 'Tables, Query, and Schema views over a dedicated database WebSocket. ER diagrams lay out top-down with ELK’s layered algorithm, with search, reset, and PNG or SVG export.',
       },
       {
         title: 'Global reach',
@@ -293,7 +296,7 @@ export const projects: Project[] = [
       {
         value: '73%',
         label: 'of production frontend code written by me',
-        context: 'And 67% of the frontend’s commits.',
+        context: 'Measured by surviving lines, including all of the Database Explorer and over 95% of the chat. And 67% of the frontend’s commits.',
       },
     ],
     stack: [
@@ -308,12 +311,13 @@ export const projects: Project[] = [
       'ELK.js',
       'SSE',
       'WebSockets',
+      'Motion',
       'next-intl',
     ],
     capabilities: [CapabilityId.AI, CapabilityId.FULL_STACK, CapabilityId.PLATFORM],
     related: [ProjectSlug.IGOT, ProjectSlug.APP_BUILDER],
     seoDescription:
-      'Case study: the cocoding.ai browser IDE and real-time AI chat Muttakin Islam Hasib built from first commit to production, with SSE and WebSocket streaming and an 80% web performance improvement.',
+      'Case study: the cocoding.ai browser IDE, real-time agent timeline, live activity preview, and Database Explorer Muttakin Islam Hasib built from first commit to production, with an 80% web performance improvement.',
   },
   {
     slug: ProjectSlug.HASHMATO,

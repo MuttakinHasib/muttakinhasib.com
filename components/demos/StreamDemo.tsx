@@ -32,25 +32,35 @@ interface ChannelPulse {
 
 interface ReceivedEvent extends StreamEvent {
   seq: number;
-  replayed: boolean;
+  resynced: boolean;
 }
 
+/** One build, as the four channels report it, using the app's own message types. */
 const script: StreamEvent[] = [
-  { channel: Channel.CHAT, label: 'Planner', detail: 'Drafted 5 tasks for a booking app' },
-  { channel: Channel.CODE, label: 'create_file', detail: 'app/booking/page.tsx' },
-  { channel: Channel.FILES, label: 'tree', detail: '+ app/booking/page.tsx' },
-  { channel: Channel.CODE, label: 'edit_file', detail: 'lib/stripe.ts' },
-  { channel: Channel.TERMINAL, label: 'run', detail: 'pnpm add stripe' },
-  { channel: Channel.TERMINAL, label: 'stdout', detail: 'added 1 package' },
-  { channel: Channel.CODE, label: 'create_file', detail: 'db/schema.sql' },
-  { channel: Channel.FILES, label: 'tree', detail: '+ db/schema.sql' },
-  { channel: Channel.TERMINAL, label: 'run', detail: 'pnpm dev' },
-  { channel: Channel.CHAT, label: 'Reviewer', detail: 'Checked types and routes' },
-  { channel: Channel.CHAT, label: 'Done', detail: 'Preview is ready' },
+  { channel: Channel.CHAT, label: 'chat_message', detail: 'build a todo app' },
+  { channel: Channel.CODE, label: 'generation_started', detail: 'todo-app' },
+  { channel: Channel.CODE, label: 'file_generated', detail: 'src/components/TodoList.tsx' },
+  { channel: Channel.FILES, label: 'explorer_created', detail: 'src/components/TodoList.tsx' },
+  { channel: Channel.CODE, label: 'file_generated', detail: 'src/components/AddTodo.tsx' },
+  { channel: Channel.FILES, label: 'explorer_created', detail: 'src/components/AddTodo.tsx' },
+  { channel: Channel.TERMINAL, label: 'shell_command', detail: 'npm install' },
+  { channel: Channel.TERMINAL, label: 'shell_output', detail: 'dependencies installed' },
+  { channel: Channel.TERMINAL, label: 'shell_command', detail: 'npm run dev' },
+  { channel: Channel.CODE, label: 'generation_completed', detail: 'todo-app' },
+  { channel: Channel.CHAT, label: 'streaming_chunk', detail: 'Your todo app is ready.' },
+];
+
+/** What the server sends back once a dropped channel reconnects. */
+const resync: StreamEvent[] = [
+  { channel: Channel.FILES, label: 'file_list', detail: 'file tree resynced' },
+  { channel: Channel.TERMINAL, label: 'history', detail: 'terminal output restored' },
 ];
 
 const EVENT_INTERVAL = 600;
+/** Retries come at a steady pace, not a growing backoff, and stop after 5. */
+const RETRY_DELAY = 700;
 const MAX_ATTEMPTS = 5;
+const SUCCEEDS_ON = 2;
 const channels = Object.values(Channel);
 
 export default function StreamDemo() {
@@ -59,7 +69,7 @@ export default function StreamDemo() {
   const [attempt, setAttempt] = useState(0);
   const [lastChannel, setLastChannel] = useState<ChannelPulse | null>(null);
   const cursor = useRef(0);
-  const [droppedAt, setDroppedAt] = useState<number | null>(null);
+  const [dropped, setDropped] = useState(false);
 
   // Stream one event per tick while connected.
   useEffect(() => {
@@ -72,41 +82,41 @@ export default function StreamDemo() {
         return;
       }
       cursor.current = index + 1;
-      const replayed = droppedAt !== null && index < droppedAt + 2;
-      setReceived((current) => [...current, { ...event, seq: index + 1, replayed }]);
+      setReceived((current) => [...current, { ...event, seq: current.length + 1, resynced: false }]);
       setLastChannel({ channel: event.channel, tick: index });
       if (index + 1 === script.length) setStatus(Status.DONE);
     }, EVENT_INTERVAL);
     return () => window.clearInterval(timer);
-  }, [status, droppedAt]);
+  }, [status]);
 
-  // Reconnect with growing delays, then resume from the last acknowledged event.
+  // Retry at a steady pace; once connected, the server resyncs files and terminal.
   useEffect(() => {
     if (status !== Status.RECONNECTING) return;
-    const succeedsOn = 2;
-    const timer = window.setTimeout(
-      () => {
-        if (attempt >= succeedsOn) {
-          setStatus(Status.STREAMING);
-          return;
-        }
-        setAttempt((value) => value + 1);
-      },
-      400 * 2 ** attempt,
-    );
+    const timer = window.setTimeout(() => {
+      if (attempt >= SUCCEEDS_ON) {
+        setReceived((current) => [
+          ...current,
+          ...resync.map((event, index) => ({ ...event, seq: current.length + index + 1, resynced: true })),
+        ]);
+        setLastChannel({ channel: Channel.FILES, tick: -attempt });
+        setStatus(Status.STREAMING);
+        return;
+      }
+      setAttempt((value) => value + 1);
+    }, RETRY_DELAY);
     return () => window.clearTimeout(timer);
   }, [status, attempt]);
 
   const run = () => {
     cursor.current = 0;
-    setDroppedAt(null);
+    setDropped(false);
     setReceived([]);
     setAttempt(0);
     setStatus(Status.STREAMING);
   };
 
   const drop = () => {
-    setDroppedAt(cursor.current);
+    setDropped(true);
     setAttempt(1);
     setStatus(Status.RECONNECTING);
   };
@@ -119,19 +129,19 @@ export default function StreamDemo() {
   };
 
   const summary =
-    status === Status.DONE && droppedAt !== null
-      ? `Stream complete. Resumed after event ${droppedAt} with nothing lost.`
+    status === Status.DONE && dropped
+      ? `Stream complete. Reconnected on attempt ${attempt}, and file_list and history brought the file tree and terminal back.`
       : status === Status.DONE
-        ? 'Stream complete. All 11 events arrived in order.'
+        ? `Stream complete. All ${script.length} events arrived in order.`
         : status === Status.RECONNECTING
-          ? 'Connection dropped. Retrying with backoff; events are held until it returns.'
+          ? `Connection dropped. Retrying at a steady pace, up to ${MAX_ATTEMPTS} attempts.`
           : '';
 
   return (
     <DemoFrame
       title="Try the stream"
-      instructions="Run a prompt to stream agent events across the four real-time channels. Drop the connection mid-stream to see it reconnect with backoff and resume without losing events."
-      note="A simulation for this portfolio: events are scripted and the network drop is fake. The behaviours (channels, capped auto-reconnect, resume) mirror the WebSocket layer described above."
+      instructions="Run the prompt to stream a build across the four WebSocket channels. Drop the connection mid-stream to watch it retry, up to 5 attempts, and resync the file tree and terminal once it’s back."
+      note="A simulation for this portfolio: events are scripted and the drop is fake. The message types, the 5-attempt cap, and the file_list and history resync mirror the real WebSocket layer. The agent timeline itself streams over SSE."
     >
       <div className="sd-layout" data-theme="dark">
         <div className="sd-toolbar">
@@ -170,7 +180,7 @@ export default function StreamDemo() {
 
         <div className="sd-prompt">
           <span className="type-mono text-fog">prompt</span>
-          <p>Build a booking app with Stripe checkout and an admin.</p>
+          <p>build a todo app</p>
         </div>
 
         <ol className="sd-timeline" aria-label="Agent events">
@@ -183,7 +193,7 @@ export default function StreamDemo() {
                 <span className="sd-tag type-mono">{event.channel}</span>
                 <span className="sd-label">{event.label}</span>
                 <span className="sd-detail type-mono">{event.detail}</span>
-                {event.replayed ? <span className="sd-resumed type-mono">after reconnect</span> : null}
+                {event.resynced ? <span className="sd-resumed type-mono">after reconnect</span> : null}
               </li>
             ))
           )}
