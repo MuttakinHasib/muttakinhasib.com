@@ -253,12 +253,6 @@ function CombineAudioVideo({ x, y }: Pt) {
   return (
     <g>
       <Card x={nx} y={top} w={nw} h={tb - top + 44} name="Combine Audio & Video" />
-      {CAV_PORTS.map((port, index) => (
-        <g key={port.label} opacity={port.connected ? 1 : 0.6}>
-          <PortLabel x={nx} y={top + 28 + index * 22} type={port.type} label={port.label} side="in" connected={port.connected} />
-        </g>
-      ))}
-      <PortLabel x={nx + nw} y={top + 28} type={PortType.VIDEO} side="out" />
 
       {/* Result preview with player controls */}
       <rect x={preview.x} y={preview.y} width={preview.w} height={preview.h} rx={6} fill="#232321" />
@@ -371,6 +365,14 @@ function CombineAudioVideo({ x, y }: Pt) {
       <rect x={laneX} y={tb + 5} width={laneW * 0.78} height={4} rx={2} fill="#3a3a37" />
       <circle cx={nx + nw - 26} cy={tb + 24} r={13} fill={PAPER} />
       <path d={`M${nx + nw - 26} ${tb + 30}v-12M${nx + nw - 31} ${tb + 23}l5-5 5 5`} fill="none" stroke={INK} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+
+      {/* Ports last, so the timeline never paints over them */}
+      {CAV_PORTS.map((port, index) => (
+        <g key={port.label} opacity={port.connected ? 1 : 0.6}>
+          <PortLabel x={nx} y={top + 28 + index * 22} type={port.type} label={port.label} side="in" connected={port.connected} />
+        </g>
+      ))}
+      <PortLabel x={nx + nw} y={top + 28} type={PortType.VIDEO} side="out" />
     </g>
   );
 }
