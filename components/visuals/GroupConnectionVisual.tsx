@@ -1,4 +1,5 @@
 import { Dots, type Pt, VizFrame } from './primitives';
+import { SelectionToolbar } from './selection-toolbar';
 import { VaseArt } from './VaseArt';
 
 /**
@@ -96,15 +97,8 @@ function Wide() {
     <>
       <Dots width={1200} height={460} color="rgba(244,241,232,0.07)" background={CANVAS} />
 
-      {/* Selection toolbar and box */}
-      <rect x={110} y={24} width={250} height={36} rx={18} fill={NODE} stroke={STROKE} />
-      <text x={130} y={47} className="v-kicker" fill={FOG}>
-        3 selected
-      </text>
-      <rect x={208} y={30} width={140} height={24} rx={12} fill="#2c2c29" />
-      <text x={278} y={47} textAnchor="middle" className="v-kicker" fill={PAPER}>
-        Build App
-      </text>
+      {/* Selection toolbar, centred over the selection box */}
+      <SelectionToolbar x={21} y={20} />
       <rect x={60} y={74} width={360} height={344} fill="none" stroke="rgba(244,241,232,0.55)" />
       {[
         [60, 74],

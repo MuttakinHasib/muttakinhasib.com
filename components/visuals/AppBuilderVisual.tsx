@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { EditorIcon, Glyph } from './editor-icons';
 import { Dots, type Pt, VizFrame } from './primitives';
+import { SelectionToolbar, selectionToolbarLayout } from './selection-toolbar';
 import { VaseArt } from './VaseArt';
 
 /**
@@ -56,7 +56,7 @@ interface TypedWireProps {
   dim?: boolean;
 }
 
-interface SelectionToolbarProps extends Pt {
+interface BuildAppHoverProps extends Pt {
   compact?: boolean;
 }
 
@@ -204,41 +204,13 @@ function Cursor({ x, y }: Pt) {
   );
 }
 
-/**
- * The toolbar that floats over a multi-selection, as the editor draws it:
- * Tidy, Download, Align, and Wrap in Section, then Build App and Run Selected,
- * each behind a divider. Build App carries its tooltip and the cursor.
- */
-function SelectionToolbar({ x, y, compact }: SelectionToolbarProps) {
-  const cell = 34;
-  const iconY = y + 12;
-  const alignX = x + 6 + cell * 2;
-  const wrapX = alignX + 48;
-  const buildX = wrapX + cell + 14;
-  const buildW = compact ? 138 : 124;
-  const runX = buildX + buildW + 14;
-  const runW = compact ? 142 : 124;
-  const width = runX + runW + 6 - x;
+/** The selection toolbar with Build App hovered: its tooltip and the cursor. */
+function BuildAppHover({ x, y, compact }: BuildAppHoverProps) {
+  const { buildX, buildW } = selectionToolbarLayout({ x, compact });
   const buildCenter = buildX + buildW / 2;
   return (
     <g>
-      <rect x={x} y={y} width={width} height={44} rx={14} fill={NODE} stroke={NODE_STROKE} />
-      <EditorIcon x={x + 14} y={iconY} glyph={Glyph.TIDY} size={20} color={FOG} />
-      <EditorIcon x={x + 14 + cell} y={iconY} glyph={Glyph.DOWNLOAD} size={20} color={FOG} />
-      <EditorIcon x={alignX + 6} y={iconY} glyph={Glyph.ALIGN_LEFT} size={20} color={FOG} />
-      <EditorIcon x={alignX + 30} y={iconY + 6} glyph={Glyph.CHEVRON_DOWN} size={9} color={FOG} strokeWidth={2} />
-      <EditorIcon x={wrapX + 7} y={iconY} glyph={Glyph.WRAP_IN_SECTION} size={20} color={FOG} />
-      <line x1={buildX - 7} y1={y + 14} x2={buildX - 7} y2={y + 30} stroke={NODE_STROKE} />
-      <rect x={buildX} y={y + 6} width={buildW} height={32} rx={10} fill="#2c2c29" />
-      <EditorIcon x={buildX + 12} y={y + 14} glyph={Glyph.APPS} size={16} color={PAPER} strokeWidth={2} />
-      <text x={buildX + 34} y={y + 27} className="v-label" fill={PAPER}>
-        Build App
-      </text>
-      <line x1={runX - 7} y1={y + 14} x2={runX - 7} y2={y + 30} stroke={NODE_STROKE} />
-      <rect x={runX} y={y + 6} width={runW} height={32} rx={10} fill="#2c2c29" />
-      <text x={runX + runW / 2} y={y + 27} textAnchor="middle" className="v-label" fill={PAPER}>
-        Run Selected
-      </text>
+      <SelectionToolbar x={x} y={y} compact={compact} />
       <rect x={buildCenter - 136} y={y - 58} width={272} height={46} rx={10} fill={PAPER} />
       <text x={buildCenter} y={y - 39} textAnchor="middle" className="v-small" fill={INK}>
         Turns the selection into an app
@@ -393,7 +365,7 @@ function Wide() {
         Vase studio
       </text>
 
-      <SelectionToolbar x={184} y={112} />
+      <BuildAppHover x={184} y={112} />
       <SelectionBox x={40} y={184} w={736} h={384} />
 
       {/* Wires keep their data type: text blue, image amber, video green */}
@@ -467,7 +439,7 @@ function Narrow() {
   return (
     <>
       <Dots width={600} height={760} color="rgba(244,241,232,0.08)" background={CANVAS} />
-      <SelectionToolbar x={56} y={78} compact />
+      <BuildAppHover x={56} y={78} compact />
       <SelectionBox x={24} y={146} w={552} h={334} />
 
       <TypedWire from={{ x: 264, y: 220 }} to={{ x: 324, y: 222 }} type={PortType.TEXT} />
