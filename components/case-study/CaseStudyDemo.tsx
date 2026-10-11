@@ -16,13 +16,12 @@ function DemoLoading() {
   );
 }
 
-/** Each case study loads only its own demo chunk; React Flow ships with App Builder alone. */
-const demos: Record<ProjectSlug, ComponentType> = {
+/** Each case study loads only its own demo chunk. cocoding.ai's interaction lives in its hero instead. */
+const demos: Partial<Record<ProjectSlug, ComponentType>> = {
   [ProjectSlug.APP_BUILDER]: dynamic(() => import('@/components/demos/PlannerDemo'), { loading: DemoLoading }),
   [ProjectSlug.GENERATIVE_FILL]: dynamic(() => import('@/components/demos/CompositorDemo'), {
     loading: DemoLoading,
   }),
-  [ProjectSlug.COCODING]: dynamic(() => import('@/components/demos/StreamDemo'), { loading: DemoLoading }),
   [ProjectSlug.HASHMATO]: dynamic(() => import('@/components/demos/TenantRoutingDemo'), { loading: DemoLoading }),
   [ProjectSlug.IGOT]: dynamic(() => import('@/components/demos/ExecutionOrderDemo'), { loading: DemoLoading }),
 };
@@ -32,5 +31,5 @@ export const SchemaExplorerDemo = dynamic(() => import('@/components/demos/Schem
 
 export function CaseStudyDemo({ slug }: CaseStudyDemoProps) {
   const Demo = demos[slug];
-  return <Demo />;
+  return Demo ? <Demo /> : null;
 }

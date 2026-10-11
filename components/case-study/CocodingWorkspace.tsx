@@ -2,17 +2,16 @@
 
 import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import type { EditorGlyph } from '../visuals/editor-icons';
+import { FOLDER_TWOTONE, fileTypeFor } from '../visuals/file-icons';
 import { Lucide } from '../visuals/lucide-icons';
-import { DemoFrame } from './DemoFrame';
 
 /**
- * A scripted build streamed into a small cocoding.ai workspace, rebuilt after
- * the frontend's main branch in the product's own theme: the chat renders agent
- * blocks with their file and Bash groups as they arrive over SSE, new files
- * land in the explorer, Code shows any file you open, and Preview animates the
- * step in progress until the app is ready. Dropping the connection takes the
- * four WebSocket channels down; they retry, then resync the file tree and
- * terminal, while SSE keeps going.
+ * The cocoding.ai workspace as a live reconstruction, rebuilt after the
+ * frontend's main branch in the product's own theme. It first renders a
+ * finished build, then streams one when it loads: agent blocks with their file
+ * and Bash groups arrive in the chat, new files land in the explorer, the
+ * editor follows the file being written, and the preview animates each step
+ * until the generated app is ready to use. Send replays the build.
  */
 
 const Scene = {
@@ -25,14 +24,6 @@ const Scene = {
 } as const;
 type Scene = (typeof Scene)[keyof typeof Scene];
 
-const Channel = {
-  CHAT: 'chat',
-  CODE: 'code',
-  FILES: 'files',
-  TERMINAL: 'terminal',
-} as const;
-type Channel = (typeof Channel)[keyof typeof Channel];
-
 const Operation = {
   READ: 'read',
   CREATE: 'create',
@@ -41,17 +32,10 @@ const Operation = {
 type Operation = (typeof Operation)[keyof typeof Operation];
 
 const RunStatus = {
-  IDLE: 'idle',
   STREAMING: 'streaming',
   DONE: 'done',
 } as const;
 type RunStatus = (typeof RunStatus)[keyof typeof RunStatus];
-
-const SocketStatus = {
-  CONNECTED: 'connected',
-  RECONNECTING: 'reconnecting',
-} as const;
-type SocketStatus = (typeof SocketStatus)[keyof typeof SocketStatus];
 
 const Mode = {
   CODE: 'code',
@@ -149,16 +133,6 @@ interface Transcript {
   final: boolean;
 }
 
-interface LogLine {
-  id: number;
-  text: string;
-}
-
-interface ChannelPulse {
-  channel: Channel;
-  tick: number;
-}
-
 interface TerminalLine {
   id: number;
   text: string;
@@ -169,6 +143,14 @@ interface Todo {
   id: number;
   label: string;
   done: boolean;
+}
+
+interface Workspace {
+  transcript: Transcript;
+  files: string[];
+  terminal: TerminalLine[];
+  activity: Activity | null;
+  openFile: string;
 }
 
 interface IconProps {
@@ -197,7 +179,7 @@ interface ChatTranscriptProps {
 
 interface ExplorerProps {
   files: readonly string[];
-  open: string | null;
+  open: string;
   fresh: string | null;
   onOpen: (path: string) => void;
 }
@@ -208,10 +190,7 @@ interface CodeViewProps {
 }
 
 const STEP_INTERVAL = 1300;
-const RETRY_DELAY = 700;
-const MAX_ATTEMPTS = 5;
-const SUCCEEDS_ON = 2;
-const channels = Object.values(Channel);
+const AUTOPLAY_DELAY = 500;
 
 const script: Step[] = [
   { kind: 'thinking', activity: { scene: Scene.ORBITAL, message: 'Our agents are working on your project...' } },
@@ -280,34 +259,15 @@ const script: Step[] = [
   { kind: 'final', activity: { scene: Scene.COMPLETION, message: 'Your project is ready to run.' } },
 ];
 
-/** Which WebSocket channel carries a step's side effects in the live app. */
-const STEP_CHANNEL: Record<Step['kind'], Channel> = {
-  thinking: Channel.CHAT,
-  agent: Channel.CHAT,
-  'file-group': Channel.FILES,
-  file: Channel.FILES,
-  command: Channel.TERMINAL,
-  final: Channel.CODE,
-};
-
 const OPERATION_GLYPH: Record<Operation, EditorGlyph> = {
   [Operation.READ]: Lucide.EYE,
   [Operation.CREATE]: Lucide.FILE_PLUS,
   [Operation.UPDATE]: Lucide.FILE_PEN,
 };
 
-/** How the "Now" panel names the animation on screen. */
-const SCENE_LABEL: Record<Scene, string> = {
-  [Scene.ORBITAL]: 'orbital, while agents think or hand off',
-  [Scene.FILE_GRID]: 'file grid, while files are read',
-  [Scene.CODE_EDITOR]: 'code window typing the file',
-  [Scene.WIREFRAME]: 'wireframe of the component or page',
-  [Scene.TERMINAL]: 'terminal running the command',
-  [Scene.COMPLETION]: 'completion check',
-};
-
 /** The template every project starts from, before the agents write anything. */
 const TEMPLATE_FILES = ['src/app/layout.tsx', 'src/app/page.tsx', 'package.json'];
+const FIRST_FILE = 'src/app/page.tsx';
 
 const SOURCES: Record<string, readonly string[]> = {
   'src/app/layout.tsx': [
@@ -439,12 +399,47 @@ function applyStep(transcript: Transcript, step: Step): Transcript {
   }
 }
 
-/** The file a step creates, if it creates one. */
-function createdFile(step: Step): string | null {
-  if (step.kind === 'file') return `${step.file.path}/${step.file.name}`;
-  if (step.kind === 'file-group' && step.operation === Operation.CREATE) return `${step.file.path}/${step.file.name}`;
+/** The file a step writes or reads, which the editor follows while streaming. */
+function stepFile(step: Step): string | null {
+  if (step.kind === 'file' || step.kind === 'file-group') return `${step.file.path}/${step.file.name}`;
   return null;
 }
+
+function createsFile(step: Step): boolean {
+  return step.kind === 'file' || (step.kind === 'file-group' && step.operation === Operation.CREATE);
+}
+
+/** What a step prints in the Output panel. */
+function outputFor(step: Step): string[][] {
+  if (step.kind === 'command') return [[`$ ${step.entry.command}`, 'command'], [step.output]];
+  if (step.kind === 'final') return [['$ npm run dev', 'command'], ['✓ Ready on http://localhost:3000', 'ok']];
+  return [];
+}
+
+/** Appends a step's effects to the workspace, as the SSE and file streams do. */
+function advance(workspace: Workspace, step: Step): Workspace {
+  const file = stepFile(step);
+  const files = file && createsFile(step) && !workspace.files.includes(file) ? [...workspace.files, file] : workspace.files;
+  const terminal = [
+    ...workspace.terminal,
+    ...outputFor(step).map(([text, tone], index) => ({
+      id: workspace.terminal.length + index + 1,
+      text: text ?? '',
+      tone: tone as TerminalLine['tone'],
+    })),
+  ];
+  return {
+    transcript: applyStep(workspace.transcript, step),
+    files,
+    terminal,
+    activity: step.activity,
+    openFile: file ?? workspace.openFile,
+  };
+}
+
+const START: Workspace = { transcript: EMPTY, files: TEMPLATE_FILES, terminal: [], activity: null, openFile: FIRST_FILE };
+/** The finished build, rendered first so the page never opens on an empty workspace. */
+const FINISHED: Workspace = { ...script.reduce(advance, START), openFile: 'src/components/TodoList.tsx' };
 
 /** Monaco's vs-dark colours for keywords and strings, enough for these snippets. */
 function highlight(line: string): ReactNode[] {
@@ -474,23 +469,33 @@ function Icon({ glyph, className }: IconProps) {
   );
 }
 
-/** The explorer's per-type icons: JSON braces, a TS badge, or the React atom. */
+/** The file-type icon cocoding.ai's FileIcon draws for a name. */
 function FileIcon({ path }: FileIconProps) {
-  if (path.endsWith('.json')) {
-    return (
-      <span className="cw-json" aria-hidden="true">
-        {'{}'}
-      </span>
-    );
-  }
-  if (path.endsWith('.ts')) {
-    return (
-      <span className="cw-ts" aria-hidden="true">
-        TS
-      </span>
-    );
-  }
-  return <span className="cw-react" aria-hidden="true" />;
+  const glyph = fileTypeFor(path);
+  return (
+    <svg className="cw-file-icon" viewBox={`0 0 ${glyph.box} ${glyph.box}`} aria-hidden="true">
+      <path d={glyph.d} fill={glyph.fill} fillRule={glyph.evenOdd ? 'evenodd' : undefined} />
+    </svg>
+  );
+}
+
+/** The explorer's folder: line-md's two-tone folder, in the row's colour. */
+function FolderIcon() {
+  return (
+    <svg
+      className="cw-folder-icon"
+      viewBox={`0 0 ${FOLDER_TWOTONE.box} ${FOLDER_TWOTONE.box}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={FOLDER_TWOTONE.body} fill="currentColor" fillOpacity={0.3} />
+      <path d={FOLDER_TWOTONE.tab} />
+    </svg>
+  );
 }
 
 function Window({ title, children }: WindowProps) {
@@ -546,6 +551,7 @@ function ActivityScene({ activity }: SceneProps) {
           <ul className="cw-grid">
             {GRID_FILES.map((file) => (
               <li key={file} data-active={file === activity.subject || undefined}>
+                <FileIcon path={file} />
                 {file}
               </li>
             ))}
@@ -623,7 +629,7 @@ function ChatTranscript({ transcript, streaming, onOpen }: ChatTranscriptProps) 
                       {group.files.map((file) => (
                         <li key={file.name}>
                           <button type="button" className="cw-file" onClick={() => onOpen(`${file.path}/${file.name}`)}>
-                            <span className="cw-react" aria-hidden="true" />
+                            <FileIcon path={file.name} />
                             {file.name}
                             <span className="cw-path">{file.path}</span>
                           </button>
@@ -681,20 +687,21 @@ function Explorer({ files, open, fresh, onOpen }: ExplorerProps) {
           <Icon glyph={Lucide.FOLDER_TREE} className="cw-icon" /> Explorer
         </span>
         <Icon glyph={Lucide.DATABASE} className="cw-icon cw-muted" />
+        <Icon glyph={Lucide.ARROW_LEFT_TO_LINE} className="cw-icon cw-muted cw-push" />
       </div>
       <ul className="cw-tree">
         <li className="cw-folder" style={{ '--depth': 0 } as CSSProperties}>
-          <Icon glyph={Lucide.FOLDER} className="cw-icon" /> Workspace
+          <FolderIcon /> Workspace
         </li>
         <li className="cw-folder" style={{ '--depth': 1 } as CSSProperties}>
-          <Icon glyph={Lucide.FOLDER} className="cw-icon" /> src
+          <FolderIcon /> src
         </li>
         {folders.map((folder) => {
           const children = inFolder(folder);
           if (children.length === 0) return null;
           return [
             <li key={folder} className="cw-folder" style={{ '--depth': 2 } as CSSProperties}>
-              <Icon glyph={Lucide.FOLDER} className="cw-icon" /> {folder.split('/').at(-1)}
+              <FolderIcon /> {folder.split('/').at(-1)}
             </li>,
             ...children.map((path) => fileButton(path, 3)),
           ];
@@ -705,7 +712,7 @@ function Explorer({ files, open, fresh, onOpen }: ExplorerProps) {
   );
 }
 
-/** Code mode: the open file's tab, its path, the code, and the Output panel. */
+/** Code: the open file's tab, its path, the code, and the Output panel. */
 function CodeView({ path, terminal }: CodeViewProps) {
   const lines = SOURCES[path] ?? [];
   const name = path.split('/').at(-1) ?? path;
@@ -722,9 +729,9 @@ function CodeView({ path, terminal }: CodeViewProps) {
         <Icon glyph={Lucide.FILE} className="cw-icon-sm" />
         {path.split('/').join(' › ')}
       </p>
-      <pre className="cw-editor" aria-label={`${name} source`}>
+      <pre key={path} className="cw-editor" aria-label={`${name} source`}>
         {lines.map((line, index) => (
-          <span key={index} className="cw-line">
+          <span key={index} className="cw-line" style={{ '--i': index } as CSSProperties}>
             <span className="cw-ln" aria-hidden="true">
               {index + 1}
             </span>
@@ -736,6 +743,7 @@ function CodeView({ path, terminal }: CodeViewProps) {
         <div className="cw-output-tabs">
           <span data-active>Output</span>
           <span>Terminal</span>
+          <span className="cw-connected">Connected</span>
         </div>
         <div className="cw-output-lines" aria-live="polite">
           {terminal.length === 0 ? <p className="cw-dim">Waiting for the first command...</p> : null}
@@ -764,73 +772,90 @@ function TodoPreview() {
     setDraft('');
   };
   return (
-    <div className="cw-browser">
-      <div className="cw-browser-bar">
-        <Icon glyph={Lucide.ARROW_LEFT} className="cw-icon" />
-        <Icon glyph={Lucide.ROTATE_CW} className="cw-icon" />
-        <span className="cw-url">
-          <Icon glyph={Lucide.LOCK} className="cw-icon-sm cw-lock" />
-          cocoding.app/app/37bc7619
-        </span>
-      </div>
-      <div className="cw-app">
-        <p className="cw-app-title">Todos</p>
-        <p className="cw-app-sub">
-          {todos.length} tasks, {todos.filter((todo) => todo.done).length} done
-        </p>
-        <form className="cw-app-form" onSubmit={add}>
-          <label className="sr-only" htmlFor="cw-todo">
-            Add a todo
-          </label>
-          <input id="cw-todo" value={draft} placeholder="Add a todo…" onChange={(event) => setDraft(event.target.value)} />
-          <button type="submit">Add</button>
-        </form>
-        <div className="cw-app-filters" role="group" aria-label="Show">
-          {Object.values(Filter).map((value) => (
-            <button key={value} type="button" aria-pressed={show === value} onClick={() => setShow(value)}>
-              {value === Filter.ALL ? 'All' : value === Filter.ACTIVE ? 'Active' : 'Done'}
-            </button>
-          ))}
-        </div>
-        <ul className="cw-app-list">
-          {visible.map((todo) => (
-            <li key={todo.id}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={todo.done}
-                  onChange={() => setTodos((current) => current.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item)))}
-                />
-                <span data-done={todo.done || undefined}>{todo.label}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <p className="cw-watermark">
-        Built with <strong>cocoding.ai</strong>
+    <div className="cw-app">
+      <p className="cw-app-title">Todos</p>
+      <p className="cw-app-sub">
+        {todos.length} tasks, {todos.filter((todo) => todo.done).length} done
       </p>
+      <form className="cw-app-form" onSubmit={add}>
+        <label className="sr-only" htmlFor="cw-todo">
+          Add a todo
+        </label>
+        <input id="cw-todo" value={draft} placeholder="Add a todo…" onChange={(event) => setDraft(event.target.value)} />
+        <button type="submit">Add</button>
+      </form>
+      <div className="cw-app-filters" role="group" aria-label="Show">
+        {Object.values(Filter).map((value) => (
+          <button key={value} type="button" aria-pressed={show === value} onClick={() => setShow(value)}>
+            {value === Filter.ALL ? 'All' : value === Filter.ACTIVE ? 'Active' : 'Done'}
+          </button>
+        ))}
+      </div>
+      <ul className="cw-app-list">
+        {visible.map((todo) => (
+          <li key={todo.id}>
+            <label>
+              <input
+                type="checkbox"
+                checked={todo.done}
+                onChange={() =>
+                  setTodos((current) => current.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item)))
+                }
+              />
+              <span data-done={todo.done || undefined}>{todo.label}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
-export default function StreamDemo() {
-  const [run, setRun] = useState<RunStatus>(RunStatus.IDLE);
-  const [socket, setSocket] = useState<SocketStatus>(SocketStatus.CONNECTED);
-  const [attempt, setAttempt] = useState(0);
-  const [transcript, setTranscript] = useState<Transcript>(EMPTY);
-  const [activity, setActivity] = useState<Activity | null>(null);
-  const [pulse, setPulse] = useState<ChannelPulse | null>(null);
-  const [log, setLog] = useState<LogLine[]>([]);
-  const [files, setFiles] = useState<string[]>(TEMPLATE_FILES);
+function Rail() {
+  return (
+    <nav className="cw-rail" aria-hidden="true">
+      <Icon glyph={Lucide.PANEL_LEFT} className="cw-icon-lg" />
+      <span className="cw-rail-rule" />
+      <Icon glyph={Lucide.SQUARE_PLUS} className="cw-icon" />
+      <Icon glyph={Lucide.MESSAGE_SQUARE} className="cw-icon" />
+      <span className="cw-rail-chip">To…</span>
+      <Icon glyph={Lucide.LAYOUT_GRID} className="cw-icon" />
+      <span className="cw-rail-fill" />
+      <Icon glyph={Lucide.SETTINGS} className="cw-icon" />
+      <span className="cw-rail-avatar" />
+    </nav>
+  );
+}
+
+export function CocodingWorkspace() {
+  const [run, setRun] = useState<RunStatus>(RunStatus.DONE);
+  const [workspace, setWorkspace] = useState<Workspace>(FINISHED);
   const [fresh, setFresh] = useState<string | null>(null);
-  const [mode, setMode] = useState<Mode>(Mode.PREVIEW);
-  const [openFile, setOpenFile] = useState('src/app/page.tsx');
-  const [terminal, setTerminal] = useState<TerminalLine[]>([]);
+  const [mode, setMode] = useState<Mode>(Mode.CODE);
   const cursor = useRef(0);
   const chatRef = useRef<HTMLDivElement>(null);
 
-  // SSE: one step per tick, whatever the WebSocket channels are doing.
+  const start = () => {
+    cursor.current = 0;
+    setWorkspace(START);
+    setFresh(null);
+    setMode(Mode.PREVIEW);
+    setRun(RunStatus.STREAMING);
+  };
+
+  // Stream a build once the page has loaded, unless motion is reduced.
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = window.setTimeout(() => {
+      cursor.current = 0;
+      setWorkspace(START);
+      setMode(Mode.PREVIEW);
+      setRun(RunStatus.STREAMING);
+    }, AUTOPLAY_DELAY);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  // SSE: one step per tick.
   useEffect(() => {
     if (run !== RunStatus.STREAMING) return;
     const timer = window.setInterval(() => {
@@ -841,235 +866,126 @@ export default function StreamDemo() {
         return;
       }
       cursor.current = index + 1;
-      setTranscript((current) => applyStep(current, step));
-      setActivity(step.activity);
-      setPulse({ channel: STEP_CHANNEL[step.kind], tick: index });
-      const created = createdFile(step);
-      if (created) {
-        setFiles((current) => (current.includes(created) ? current : [...current, created]));
-        setFresh(created);
-      }
-      if (step.kind === 'command') {
-        setTerminal((current) => [
-          ...current,
-          { id: current.length + 1, text: `$ ${step.entry.command}`, tone: 'command' },
-          { id: current.length + 2, text: step.output },
-        ]);
-      }
-      if (step.kind === 'final') {
-        setTerminal((current) => [
-          ...current,
-          { id: current.length + 1, text: '$ npm run dev', tone: 'command' },
-          { id: current.length + 2, text: '✓ Ready on http://localhost:3000', tone: 'ok' },
-        ]);
-      }
+      setWorkspace((current) => advance(current, step));
+      if (createsFile(step)) setFresh(stepFile(step));
       if (index + 1 === script.length) setRun(RunStatus.DONE);
     }, STEP_INTERVAL);
     return () => window.clearInterval(timer);
   }, [run]);
 
-  // WebSockets: steady retries, then the server resyncs the tree and terminal.
-  useEffect(() => {
-    if (socket !== SocketStatus.RECONNECTING) return;
-    const timer = window.setTimeout(() => {
-      if (attempt >= SUCCEEDS_ON) {
-        setSocket(SocketStatus.CONNECTED);
-        setLog((current) => [
-          ...current,
-          { id: current.length + 1, text: `Reconnected on attempt ${attempt} of ${MAX_ATTEMPTS}.` },
-          { id: current.length + 2, text: 'files: file_list resynced the file tree.' },
-          { id: current.length + 3, text: 'terminal: history restored the terminal output.' },
-        ]);
-        return;
-      }
-      setAttempt((value) => value + 1);
-    }, RETRY_DELAY);
-    return () => window.clearTimeout(timer);
-  }, [socket, attempt]);
-
   // Follow the stream, as the chat does.
   useEffect(() => {
     const chat = chatRef.current;
     if (chat) chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
-  }, [transcript]);
-
-  const start = () => {
-    cursor.current = 0;
-    setTranscript(EMPTY);
-    setActivity(null);
-    setPulse(null);
-    setLog([]);
-    setFiles(TEMPLATE_FILES);
-    setFresh(null);
-    setTerminal([]);
-    setMode(Mode.PREVIEW);
-    setSocket(SocketStatus.CONNECTED);
-    setAttempt(0);
-    setRun(RunStatus.STREAMING);
-  };
-
-  const drop = () => {
-    setAttempt(1);
-    setSocket(SocketStatus.RECONNECTING);
-    setLog((current) => [...current, { id: current.length + 1, text: 'WebSockets dropped. The SSE timeline keeps streaming.' }]);
-  };
+  }, [workspace.transcript]);
 
   // Opening a file from the chat or the explorer switches to Code, as in the product.
   const open = (path: string) => {
-    setOpenFile(path);
+    setWorkspace((current) => ({ ...current, openFile: path }));
     setMode(Mode.CODE);
   };
 
-  const offline = socket === SocketStatus.RECONNECTING;
   const streaming = run === RunStatus.STREAMING;
-  const status = offline
-    ? `Reconnecting, attempt ${attempt} of ${MAX_ATTEMPTS}`
-    : streaming
-      ? 'Streaming'
-      : run === RunStatus.DONE
-        ? 'Stream complete'
-        : 'Idle';
+  const { activity } = workspace;
 
   return (
-    <DemoFrame
-      title="Try the stream"
-      instructions="Run the prompt and watch a build stream into the workspace: agent blocks with their file and Bash groups in the chat, new files in the explorer, and the preview animating each step until the app is ready. Open any file to read it in Code. Drop the connection mid-build to see the WebSocket channels retry while the SSE timeline keeps going."
-      note="A simulation for this portfolio, rebuilt after cocoding.ai’s main branch. The block types, messages, preview states, the 5-attempt cap, and the file_list and history resync mirror the app; the events are scripted, the drop is fake, and the code is illustrative."
-    >
-      <div className="cw">
-        <div className="cw-controls">
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="demo-button demo-button-strong" onClick={start} disabled={streaming}>
-              {run === RunStatus.IDLE ? 'Run prompt' : 'Run again'}
-            </button>
-            <button type="button" className="demo-button" onClick={drop} disabled={!streaming || offline}>
-              Drop the connection
-            </button>
+    <div className="cw-hero">
+      <div className="cw-ide" data-theme="dark" role="region" aria-label="Live reconstruction of the cocoding.ai workspace">
+        <Rail />
+
+        <section className="cw-chat" aria-label="Chat">
+          <div className="cw-chat-head">
+            <p className="cw-wordmark">
+              cocoding<span>.ai</span>
+            </p>
+            <Icon glyph={Lucide.ARROW_LEFT_FROM_LINE} className="cw-icon cw-muted" />
           </div>
-          <p className="cw-status" data-state={offline ? 'offline' : run} aria-live="polite">
-            {status}
-          </p>
-        </div>
-
-        <div className="cw-ide" data-theme="dark">
-          <section className="cw-chat" aria-label="Chat">
-            <div className="cw-chat-head">
-              <p className="cw-wordmark">
-                cocoding<span>.ai</span>
-              </p>
-              <Icon glyph={Lucide.ARROW_LEFT_FROM_LINE} className="cw-icon cw-muted" />
-            </div>
-            <div className="cw-chat-scroll" ref={chatRef}>
-              <p className="cw-bubble">build a todo app</p>
-              {run === RunStatus.IDLE ? <p className="cw-muted cw-hint">Run the prompt to start the build.</p> : null}
-              <ChatTranscript transcript={transcript} streaming={streaming} onOpen={open} />
-            </div>
-            <div className="cw-input" aria-hidden="true">
-              <span className="cw-placeholder">Your message here...</span>
-              <span className="cw-input-row">
-                <span className="cw-ghost">
-                  <Icon glyph={Lucide.IMAGE_PLUS} className="cw-icon" /> Image
-                </span>
-                <span className="cw-send">
-                  <Icon glyph={Lucide.SEND} className="cw-icon" /> Send
-                </span>
+          <div className="cw-chat-scroll" ref={chatRef}>
+            <p className="cw-bubble">build a todo app</p>
+            <ChatTranscript transcript={workspace.transcript} streaming={streaming} onOpen={open} />
+          </div>
+          <div className="cw-input">
+            <span className="cw-placeholder">Your message here...</span>
+            <span className="cw-input-row">
+              <span className="cw-ghost" aria-hidden="true">
+                <Icon glyph={Lucide.IMAGE_PLUS} className="cw-icon" /> Image
               </span>
+              <button type="button" className="cw-send" onClick={start} disabled={streaming} aria-label="Send the prompt again to replay the build">
+                <Icon glyph={Lucide.SEND} className="cw-icon" /> Send
+              </button>
+            </span>
+          </div>
+        </section>
+
+        <Explorer files={workspace.files} open={workspace.openFile} fresh={fresh} onOpen={open} />
+
+        <section className="cw-main" aria-label="Editor">
+          <div className="cw-toolbar">
+            <div className="cw-toggle" role="group" aria-label="Mode">
+              <button type="button" aria-pressed={mode === Mode.CODE} onClick={() => setMode(Mode.CODE)}>
+                <Icon glyph={Lucide.CODE} className="cw-icon" /> Code
+              </button>
+              <button type="button" aria-pressed={mode === Mode.PREVIEW} onClick={() => setMode(Mode.PREVIEW)}>
+                <Icon glyph={Lucide.EYE} className="cw-icon" /> Preview
+              </button>
             </div>
-          </section>
+            <span className="cw-tools" aria-hidden="true">
+              <Icon glyph={Lucide.MAXIMIZE} className="cw-icon" />
+              <Icon glyph={Lucide.DOWNLOAD} className="cw-icon" />
+              <Icon glyph={Lucide.SHARE} className="cw-icon" />
+            </span>
+            <span className="cw-actions" aria-hidden="true">
+              <span className="cw-publish">
+                <Icon glyph={Lucide.GLOBE} className="cw-icon" /> Publish
+              </span>
+              <span className="cw-github">
+                <Icon glyph={Lucide.GITHUB} className="cw-icon" /> Github
+              </span>
+              <Icon glyph={Lucide.SETTINGS_2} className="cw-icon" />
+            </span>
+          </div>
 
-          <Explorer files={files} open={mode === Mode.CODE ? openFile : null} fresh={fresh} onOpen={open} />
-
-          <section className="cw-main" aria-label="Editor">
-            <div className="cw-toolbar">
-              <div className="cw-toggle" role="group" aria-label="Mode">
-                <button type="button" aria-pressed={mode === Mode.CODE} onClick={() => setMode(Mode.CODE)}>
-                  <Icon glyph={Lucide.CODE} className="cw-icon" /> Code
-                </button>
-                <button type="button" aria-pressed={mode === Mode.PREVIEW} onClick={() => setMode(Mode.PREVIEW)}>
-                  <Icon glyph={Lucide.EYE} className="cw-icon" /> Preview
-                </button>
+          <div className="cw-panes">
+            <div className="cw-pane" data-active={mode === Mode.CODE || undefined}>
+              <CodeView path={workspace.openFile} terminal={workspace.terminal} />
+            </div>
+            <div className="cw-pane cw-preview" data-active={mode === Mode.PREVIEW || undefined}>
+              <div className="cw-browser-bar">
+                <Icon glyph={Lucide.ARROW_LEFT} className="cw-icon" />
+                <Icon glyph={Lucide.ROTATE_CW} className="cw-icon" />
+                <span className="cw-url">
+                  <Icon glyph={Lucide.LOCK} className="cw-icon-sm cw-lock" />
+                  cocoding.app/app/37bc7619
+                </span>
+                <Icon glyph={Lucide.SHARE} className="cw-icon" />
               </div>
-              <span className="cw-actions" aria-hidden="true">
-                <span className="cw-publish">
-                  <Icon glyph={Lucide.GLOBE} className="cw-icon" /> Publish
-                </span>
-                <span className="cw-github">
-                  <Icon glyph={Lucide.GITHUB} className="cw-icon" /> Github
-                </span>
-              </span>
-            </div>
-            {mode === Mode.CODE ? (
-              <CodeView path={openFile} terminal={terminal} />
-            ) : run === RunStatus.DONE ? (
-              <TodoPreview />
-            ) : (
-              <div className="cw-stage">
-                {activity ? (
-                  <div key={`${activity.scene}-${activity.subject ?? ''}`} className="cw-scene">
-                    <ActivityScene activity={activity} />
-                  </div>
-                ) : (
-                  <p className="cw-logo">
-                    cocoding<span>.ai</span>
+              {run === RunStatus.DONE ? (
+                <div className="cw-browser">
+                  <TodoPreview />
+                  <p className="cw-watermark">
+                    Built with <strong>cocoding.ai</strong>
                   </p>
-                )}
-                <p className={streaming ? 'cw-message cw-shimmer' : 'cw-message'} aria-live="polite">
-                  {activity?.message ?? 'Tell cocoding.ai what you want to build'}
-                </p>
-              </div>
-            )}
-          </section>
-        </div>
-
-        <div className="cw-panel">
-          <div className="cw-connections">
-            <p className="type-small font-[600]">Connections</p>
-            <ul aria-label="Connections">
-              <li data-state={streaming ? 'live' : undefined}>
-                <span>SSE</span>
-                <span className="type-mono">agent timeline</span>
-              </li>
-              {channels.map((channel) => (
-                <li
-                  key={`${channel}-${pulse?.channel === channel ? pulse.tick : 'idle'}`}
-                  data-state={offline ? 'offline' : pulse?.channel === channel && streaming ? 'pulse' : undefined}
-                >
-                  <span>{channel}</span>
-                  <span className="type-mono">{offline ? 'retrying' : 'WebSocket'}</span>
-                </li>
-              ))}
-            </ul>
+                </div>
+              ) : (
+                <div className="cw-stage">
+                  {activity ? (
+                    <div key={`${activity.scene}-${activity.subject ?? ''}`} className="cw-scene">
+                      <ActivityScene activity={activity} />
+                    </div>
+                  ) : (
+                    <p className="cw-logo">
+                      cocoding<span>.ai</span>
+                    </p>
+                  )}
+                  <p className="cw-message cw-shimmer" aria-live="polite">
+                    {activity?.message ?? 'Our agents are working on your project...'}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-
-          <dl className="cw-now" aria-live="polite">
-            <div>
-              <dt>Status</dt>
-              <dd>{status}</dd>
-            </div>
-            <div>
-              <dt>Preview</dt>
-              <dd>{run === RunStatus.DONE ? 'the generated app' : activity ? SCENE_LABEL[activity.scene] : 'cocoding.ai logo'}</dd>
-            </div>
-            <div>
-              <dt>Message</dt>
-              <dd>{activity?.message ?? '—'}</dd>
-            </div>
-          </dl>
-
-          <div className="cw-log-card">
-            <p className="type-mono text-graphite">connection log</p>
-            {log.length > 0 ? (
-              <ol aria-label="Connection log">
-                {log.map((line) => (
-                  <li key={line.id}>{line.text}</li>
-                ))}
-              </ol>
-            ) : (
-              <p className="type-small text-graphite">Nothing dropped yet. Drop the connection mid-build to see the retry.</p>
-            )}
-          </div>
-        </div>
+        </section>
       </div>
-    </DemoFrame>
+    </div>
   );
 }

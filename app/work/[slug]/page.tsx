@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense, ViewTransition } from 'react';
 import { CaseStudyDemo } from '@/components/case-study/CaseStudyDemo';
+import { CocodingWorkspace } from '@/components/case-study/CocodingWorkspace';
 import { CaseStudyExtras } from '@/components/case-study/CaseStudyExtras';
 import { CaseSection, NoteList } from '@/components/case-study/CaseSection';
 import { ContactSection } from '@/components/contact/ContactSection';
@@ -11,7 +12,7 @@ import { JsonLd } from '@/components/site/JsonLd';
 import { PageTransition } from '@/components/site/PageTransition';
 import { ProjectVisual } from '@/components/visuals/ProjectVisual';
 import { findProject, getNextProject, getProject, projects } from '@/content/projects';
-import { ProjectTone } from '@/content/types';
+import { ProjectSlug, ProjectTone } from '@/content/types';
 import { caseStudySchema } from '@/lib/schema';
 import { caseStudyHref } from '@/lib/site';
 
@@ -134,11 +135,14 @@ async function CaseStudy({ params }: CaseStudyProps) {
             <div className="cs-hero-visual">
               <ViewTransition name={`project-visual-${project.slug}`} share="project-morph" default="none">
                 <div>
-                  <ProjectVisual slug={project.slug} />
+                  {project.slug === ProjectSlug.COCODING ? <CocodingWorkspace /> : <ProjectVisual slug={project.slug} />}
                 </div>
               </ViewTransition>
               <p className="type-small mt-3 opacity-75">
                 Original reconstruction for this portfolio. Product screenshots are not shown.
+                {project.slug === ProjectSlug.COCODING
+                  ? ' It streams a build when the page loads: Send replays it, any file opens in Code, and the finished app works.'
+                  : null}
               </p>
             </div>
           </div>
