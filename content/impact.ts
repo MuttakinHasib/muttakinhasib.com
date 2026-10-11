@@ -43,9 +43,9 @@ export const impact: ImpactEntry[] = [
     emphasis: Emphasis.SUPPORT,
   },
   {
-    value: '1,567',
+    value: '1,624',
     claim: 'commits to ImagineArt’s web app in 7 months',
-    context: 'The most of 33 contributors between Feb and Sep 2026, more than twice the next.',
+    context: 'Excluding merges; 2,152 with them. The most of 33 contributors between Feb and Sep 2026, more than twice the next.',
     project: ProjectSlug.APP_BUILDER,
     source: 'ImagineArt',
     emphasis: Emphasis.SUPPORT,
