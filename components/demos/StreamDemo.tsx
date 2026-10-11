@@ -1,16 +1,18 @@
 'use client';
 
-import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import type { EditorGlyph } from '../visuals/editor-icons';
 import { Lucide } from '../visuals/lucide-icons';
 import { DemoFrame } from './DemoFrame';
 
 /**
  * A scripted build streamed into a small cocoding.ai workspace, rebuilt after
- * the frontend's main branch: the chat renders agent blocks with their file and
- * Bash groups as they arrive over SSE, and the empty preview animates the step
- * in progress. Dropping the connection takes the four WebSocket channels down;
- * they retry, then resync the file tree and terminal, while SSE keeps going.
+ * the frontend's main branch in the product's own theme: the chat renders agent
+ * blocks with their file and Bash groups as they arrive over SSE, new files
+ * land in the explorer, Code shows any file you open, and Preview animates the
+ * step in progress until the app is ready. Dropping the connection takes the
+ * four WebSocket channels down; they retry, then resync the file tree and
+ * terminal, while SSE keeps going.
  */
 
 const Scene = {
@@ -50,6 +52,19 @@ const SocketStatus = {
   RECONNECTING: 'reconnecting',
 } as const;
 type SocketStatus = (typeof SocketStatus)[keyof typeof SocketStatus];
+
+const Mode = {
+  CODE: 'code',
+  PREVIEW: 'preview',
+} as const;
+type Mode = (typeof Mode)[keyof typeof Mode];
+
+const Filter = {
+  ALL: 'all',
+  ACTIVE: 'active',
+  DONE: 'done',
+} as const;
+type Filter = (typeof Filter)[keyof typeof Filter];
 
 interface Activity {
   scene: Scene;
@@ -97,6 +112,7 @@ interface FileStep {
 interface CommandStep {
   kind: 'command';
   entry: CommandEntry;
+  output: string;
   activity: Activity;
 }
 
@@ -143,6 +159,18 @@ interface ChannelPulse {
   tick: number;
 }
 
+interface TerminalLine {
+  id: number;
+  text: string;
+  tone?: 'command' | 'ok';
+}
+
+interface Todo {
+  id: number;
+  label: string;
+  done: boolean;
+}
+
 interface IconProps {
   glyph: EditorGlyph;
   className?: string;
@@ -157,9 +185,26 @@ interface SceneProps {
   activity: Activity;
 }
 
+interface FileIconProps {
+  path: string;
+}
+
 interface ChatTranscriptProps {
   transcript: Transcript;
   streaming: boolean;
+  onOpen: (path: string) => void;
+}
+
+interface ExplorerProps {
+  files: readonly string[];
+  open: string | null;
+  fresh: string | null;
+  onOpen: (path: string) => void;
+}
+
+interface CodeViewProps {
+  path: string;
+  terminal: readonly TerminalLine[];
 }
 
 const STEP_INTERVAL = 1300;
@@ -193,6 +238,7 @@ const script: Step[] = [
   {
     kind: 'command',
     entry: { description: 'Install dependencies', command: 'npm install' },
+    output: 'dependencies installed',
     activity: { scene: Scene.TERMINAL, message: 'Building backend: Install dependencies', subject: 'npm install' },
   },
   {
@@ -221,6 +267,7 @@ const script: Step[] = [
   {
     kind: 'command',
     entry: { description: 'Install UI components', command: 'npx shadcn add checkbox' },
+    output: '✓ added checkbox',
     activity: { scene: Scene.TERMINAL, message: 'Crafting interface: Installing UI components...', subject: 'npx shadcn add checkbox' },
   },
   {
@@ -259,9 +306,106 @@ const SCENE_LABEL: Record<Scene, string> = {
   [Scene.COMPLETION]: 'completion check',
 };
 
+/** The template every project starts from, before the agents write anything. */
+const TEMPLATE_FILES = ['src/app/layout.tsx', 'src/app/page.tsx', 'package.json'];
+
+const SOURCES: Record<string, readonly string[]> = {
+  'src/app/layout.tsx': [
+    "import './globals.css'",
+    '',
+    'export default function RootLayout({',
+    '  children,',
+    '}: { children: React.ReactNode }) {',
+    '  return (',
+    '    <html lang="en">',
+    '      <body>{children}</body>',
+    '    </html>',
+    '  )',
+    '}',
+  ],
+  'src/app/page.tsx': [
+    "import { TodoList } from '@/components/TodoList'",
+    '',
+    'export default function Page() {',
+    '  return (',
+    '    <main className="mx-auto max-w-md p-6">',
+    '      <TodoList />',
+    '    </main>',
+    '  )',
+    '}',
+  ],
+  'package.json': ['{', '  "name": "todo-app",', '  "private": true,', '  "scripts": {', '    "dev": "next dev"', '  }', '}'],
+  'src/lib/todos.ts': [
+    'export interface Todo {',
+    '  id: number',
+    '  label: string',
+    '  done: boolean',
+    '}',
+    '',
+    "export type Show = 'all' | 'active' | 'done'",
+    '',
+    'export function filterBy(todos: Todo[], show: Show) {',
+    "  if (show === 'all') return todos",
+    "  return todos.filter((t) => t.done === (show === 'done'))",
+    '}',
+  ],
+  'src/components/TodoList.tsx': [
+    "'use client'",
+    '',
+    "import { useState } from 'react'",
+    "import { AddTodo } from './AddTodo'",
+    "import { TodoItem } from './TodoItem'",
+    '',
+    'export function TodoList() {',
+    '  const [todos, setTodos] = useState([])',
+    "  const [show, setShow] = useState('all')",
+    '  const items = filterBy(todos, show)',
+    '',
+    '  return (',
+    '    <section className="space-y-3">',
+    '      <AddTodo onAdd={add} />',
+    '      {items.map((todo) => (',
+    '        <TodoItem key={todo.id} todo={todo} />',
+    '      ))}',
+    '    </section>',
+    '  )',
+    '}',
+  ],
+  'src/components/TodoItem.tsx': [
+    "import { Checkbox } from '@/components/ui/checkbox'",
+    '',
+    'export function TodoItem({ todo, onToggle }) {',
+    '  return (',
+    '    <li className="flex items-center gap-3">',
+    '      <Checkbox checked={todo.done} onCheckedChange={onToggle} />',
+    '      <span>{todo.label}</span>',
+    '    </li>',
+    '  )',
+    '}',
+  ],
+  'src/components/AddTodo.tsx': [
+    "import { Button } from '@/components/ui/button'",
+    '',
+    'export function AddTodo({ onAdd }) {',
+    '  return (',
+    '    <form action={onAdd} className="flex gap-2">',
+    '      <input name="label" placeholder="Add a todo…" />',
+    '      <Button type="submit">Add</Button>',
+    '    </form>',
+    '  )',
+    '}',
+  ],
+};
+
 const GRID_FILES = ['page.tsx', 'layout.tsx', 'globals.css', 'TodoList.tsx', 'todos.ts', 'package.json'];
 const SPINNER = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 const EMPTY: Transcript = { thinking: false, agents: [], final: false };
+const KEYWORDS = /^(import|from|export|default|function|const|return|if|interface|type)$/;
+const STARTER_TODOS: Todo[] = [
+  { id: 1, label: 'Buy oat milk', done: true },
+  { id: 2, label: 'Write release notes', done: false },
+  { id: 3, label: 'Book the dentist', done: false },
+];
 
 /** Folds one streamed step into the transcript, the way the SSE store appends blocks. */
 function applyStep(transcript: Transcript, step: Step): Transcript {
@@ -295,6 +439,22 @@ function applyStep(transcript: Transcript, step: Step): Transcript {
   }
 }
 
+/** The file a step creates, if it creates one. */
+function createdFile(step: Step): string | null {
+  if (step.kind === 'file') return `${step.file.path}/${step.file.name}`;
+  if (step.kind === 'file-group' && step.operation === Operation.CREATE) return `${step.file.path}/${step.file.name}`;
+  return null;
+}
+
+/** Monaco's vs-dark colours for keywords and strings, enough for these snippets. */
+function highlight(line: string): ReactNode[] {
+  return line.split(/('[^']*'|"[^"]*"|\b[a-z]+\b)/).map((part, index) => {
+    if (/^['"]/.test(part)) return <span key={index} className="cw-str">{part}</span>;
+    if (KEYWORDS.test(part)) return <span key={index} className="cw-kw">{part}</span>;
+    return part;
+  });
+}
+
 function Icon({ glyph, className }: IconProps) {
   return (
     <svg
@@ -312,6 +472,25 @@ function Icon({ glyph, className }: IconProps) {
       ))}
     </svg>
   );
+}
+
+/** The explorer's per-type icons: JSON braces, a TS badge, or the React atom. */
+function FileIcon({ path }: FileIconProps) {
+  if (path.endsWith('.json')) {
+    return (
+      <span className="cw-json" aria-hidden="true">
+        {'{}'}
+      </span>
+    );
+  }
+  if (path.endsWith('.ts')) {
+    return (
+      <span className="cw-ts" aria-hidden="true">
+        TS
+      </span>
+    );
+  }
+  return <span className="cw-react" aria-hidden="true" />;
 }
 
 function Window({ title, children }: WindowProps) {
@@ -376,7 +555,7 @@ function ActivityScene({ activity }: SceneProps) {
     case Scene.CODE_EDITOR:
       return (
         <Window title={activity.subject}>
-          <div className="cw-code" aria-hidden="true">
+          <div className="cw-code-lines" aria-hidden="true">
             {Array.from({ length: 9 }, (_, index) => (
               <span key={index} style={{ '--i': index } as CSSProperties} />
             ))}
@@ -407,7 +586,7 @@ function ActivityScene({ activity }: SceneProps) {
   }
 }
 
-function ChatTranscript({ transcript, streaming }: ChatTranscriptProps) {
+function ChatTranscript({ transcript, streaming, onOpen }: ChatTranscriptProps) {
   const lastAgent = transcript.agents.length - 1;
   return (
     <>
@@ -442,10 +621,12 @@ function ChatTranscript({ transcript, streaming }: ChatTranscriptProps) {
                     </p>
                     <ul>
                       {group.files.map((file) => (
-                        <li key={file.name} className="cw-file">
-                          <span className="cw-react" aria-hidden="true" />
-                          {file.name}
-                          <span className="cw-path">{file.path}</span>
+                        <li key={file.name}>
+                          <button type="button" className="cw-file" onClick={() => onOpen(`${file.path}/${file.name}`)}>
+                            <span className="cw-react" aria-hidden="true" />
+                            {file.name}
+                            <span className="cw-path">{file.path}</span>
+                          </button>
                         </li>
                       ))}
                     </ul>
@@ -469,8 +650,167 @@ function ChatTranscript({ transcript, streaming }: ChatTranscriptProps) {
           </div>
         );
       })}
-      {transcript.final ? <p className="cw-final">Your todo app is ready. Open the preview to try it.</p> : null}
+      {transcript.final ? <p className="cw-final">Your todo app is ready. Open the preview to try it, or ask for a change.</p> : null}
     </>
+  );
+}
+
+/** The explorer's tree, grouped by folder the way the workspace lays it out. */
+function Explorer({ files, open, fresh, onOpen }: ExplorerProps) {
+  const folders = ['src/app', 'src/components', 'src/lib'];
+  const inFolder = (folder: string) => files.filter((file) => file.startsWith(`${folder}/`)).sort();
+  const rootFiles = files.filter((file) => !file.includes('/')).sort();
+  const fileButton = (path: string, depth: number) => (
+    <li key={path} style={{ '--depth': depth } as CSSProperties}>
+      <button
+        type="button"
+        className="cw-tree-file"
+        aria-current={open === path || undefined}
+        data-fresh={fresh === path || undefined}
+        onClick={() => onOpen(path)}
+      >
+        <FileIcon path={path} />
+        {path.split('/').at(-1)}
+      </button>
+    </li>
+  );
+  return (
+    <section className="cw-explorer" aria-label="Explorer">
+      <div className="cw-explorer-head">
+        <span className="cw-explorer-tab">
+          <Icon glyph={Lucide.FOLDER_TREE} className="cw-icon" /> Explorer
+        </span>
+        <Icon glyph={Lucide.DATABASE} className="cw-icon cw-muted" />
+      </div>
+      <ul className="cw-tree">
+        <li className="cw-folder" style={{ '--depth': 0 } as CSSProperties}>
+          <Icon glyph={Lucide.FOLDER} className="cw-icon" /> Workspace
+        </li>
+        <li className="cw-folder" style={{ '--depth': 1 } as CSSProperties}>
+          <Icon glyph={Lucide.FOLDER} className="cw-icon" /> src
+        </li>
+        {folders.map((folder) => {
+          const children = inFolder(folder);
+          if (children.length === 0) return null;
+          return [
+            <li key={folder} className="cw-folder" style={{ '--depth': 2 } as CSSProperties}>
+              <Icon glyph={Lucide.FOLDER} className="cw-icon" /> {folder.split('/').at(-1)}
+            </li>,
+            ...children.map((path) => fileButton(path, 3)),
+          ];
+        })}
+        {rootFiles.map((path) => fileButton(path, 1))}
+      </ul>
+    </section>
+  );
+}
+
+/** Code mode: the open file's tab, its path, the code, and the Output panel. */
+function CodeView({ path, terminal }: CodeViewProps) {
+  const lines = SOURCES[path] ?? [];
+  const name = path.split('/').at(-1) ?? path;
+  return (
+    <div className="cw-code-view">
+      <div className="cw-tabs">
+        <span className="cw-tab" data-active>
+          <FileIcon path={path} />
+          {name}
+          <Icon glyph={Lucide.X} className="cw-icon-sm" />
+        </span>
+      </div>
+      <p className="cw-crumbs">
+        <Icon glyph={Lucide.FILE} className="cw-icon-sm" />
+        {path.split('/').join(' › ')}
+      </p>
+      <pre className="cw-editor" aria-label={`${name} source`}>
+        {lines.map((line, index) => (
+          <span key={index} className="cw-line">
+            <span className="cw-ln" aria-hidden="true">
+              {index + 1}
+            </span>
+            {highlight(line)}
+          </span>
+        ))}
+      </pre>
+      <div className="cw-output">
+        <div className="cw-output-tabs">
+          <span data-active>Output</span>
+          <span>Terminal</span>
+        </div>
+        <div className="cw-output-lines" aria-live="polite">
+          {terminal.length === 0 ? <p className="cw-dim">Waiting for the first command...</p> : null}
+          {terminal.map((line) => (
+            <p key={line.id} data-tone={line.tone}>
+              {line.text}
+            </p>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The generated app in the preview: add, tick off, and filter todos. */
+function TodoPreview() {
+  const [todos, setTodos] = useState<Todo[]>(STARTER_TODOS);
+  const [show, setShow] = useState<Filter>(Filter.ALL);
+  const [draft, setDraft] = useState('');
+  const visible = todos.filter((todo) => show === Filter.ALL || todo.done === (show === Filter.DONE));
+  const add = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const label = draft.trim();
+    if (!label) return;
+    setTodos((current) => [...current, { id: Date.now(), label, done: false }]);
+    setDraft('');
+  };
+  return (
+    <div className="cw-browser">
+      <div className="cw-browser-bar">
+        <Icon glyph={Lucide.ARROW_LEFT} className="cw-icon" />
+        <Icon glyph={Lucide.ROTATE_CW} className="cw-icon" />
+        <span className="cw-url">
+          <Icon glyph={Lucide.LOCK} className="cw-icon-sm cw-lock" />
+          cocoding.app/app/37bc7619
+        </span>
+      </div>
+      <div className="cw-app">
+        <p className="cw-app-title">Todos</p>
+        <p className="cw-app-sub">
+          {todos.length} tasks, {todos.filter((todo) => todo.done).length} done
+        </p>
+        <form className="cw-app-form" onSubmit={add}>
+          <label className="sr-only" htmlFor="cw-todo">
+            Add a todo
+          </label>
+          <input id="cw-todo" value={draft} placeholder="Add a todo…" onChange={(event) => setDraft(event.target.value)} />
+          <button type="submit">Add</button>
+        </form>
+        <div className="cw-app-filters" role="group" aria-label="Show">
+          {Object.values(Filter).map((value) => (
+            <button key={value} type="button" aria-pressed={show === value} onClick={() => setShow(value)}>
+              {value === Filter.ALL ? 'All' : value === Filter.ACTIVE ? 'Active' : 'Done'}
+            </button>
+          ))}
+        </div>
+        <ul className="cw-app-list">
+          {visible.map((todo) => (
+            <li key={todo.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={todo.done}
+                  onChange={() => setTodos((current) => current.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item)))}
+                />
+                <span data-done={todo.done || undefined}>{todo.label}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <p className="cw-watermark">
+        Built with <strong>cocoding.ai</strong>
+      </p>
+    </div>
   );
 }
 
@@ -482,6 +822,11 @@ export default function StreamDemo() {
   const [activity, setActivity] = useState<Activity | null>(null);
   const [pulse, setPulse] = useState<ChannelPulse | null>(null);
   const [log, setLog] = useState<LogLine[]>([]);
+  const [files, setFiles] = useState<string[]>(TEMPLATE_FILES);
+  const [fresh, setFresh] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>(Mode.PREVIEW);
+  const [openFile, setOpenFile] = useState('src/app/page.tsx');
+  const [terminal, setTerminal] = useState<TerminalLine[]>([]);
   const cursor = useRef(0);
   const chatRef = useRef<HTMLDivElement>(null);
 
@@ -499,6 +844,25 @@ export default function StreamDemo() {
       setTranscript((current) => applyStep(current, step));
       setActivity(step.activity);
       setPulse({ channel: STEP_CHANNEL[step.kind], tick: index });
+      const created = createdFile(step);
+      if (created) {
+        setFiles((current) => (current.includes(created) ? current : [...current, created]));
+        setFresh(created);
+      }
+      if (step.kind === 'command') {
+        setTerminal((current) => [
+          ...current,
+          { id: current.length + 1, text: `$ ${step.entry.command}`, tone: 'command' },
+          { id: current.length + 2, text: step.output },
+        ]);
+      }
+      if (step.kind === 'final') {
+        setTerminal((current) => [
+          ...current,
+          { id: current.length + 1, text: '$ npm run dev', tone: 'command' },
+          { id: current.length + 2, text: '✓ Ready on http://localhost:3000', tone: 'ok' },
+        ]);
+      }
       if (index + 1 === script.length) setRun(RunStatus.DONE);
     }, STEP_INTERVAL);
     return () => window.clearInterval(timer);
@@ -535,6 +899,10 @@ export default function StreamDemo() {
     setActivity(null);
     setPulse(null);
     setLog([]);
+    setFiles(TEMPLATE_FILES);
+    setFresh(null);
+    setTerminal([]);
+    setMode(Mode.PREVIEW);
     setSocket(SocketStatus.CONNECTED);
     setAttempt(0);
     setRun(RunStatus.STREAMING);
@@ -544,6 +912,12 @@ export default function StreamDemo() {
     setAttempt(1);
     setSocket(SocketStatus.RECONNECTING);
     setLog((current) => [...current, { id: current.length + 1, text: 'WebSockets dropped. The SSE timeline keeps streaming.' }]);
+  };
+
+  // Opening a file from the chat or the explorer switches to Code, as in the product.
+  const open = (path: string) => {
+    setOpenFile(path);
+    setMode(Mode.CODE);
   };
 
   const offline = socket === SocketStatus.RECONNECTING;
@@ -559,58 +933,76 @@ export default function StreamDemo() {
   return (
     <DemoFrame
       title="Try the stream"
-      instructions="Run the prompt and watch a build stream into the workspace: agent blocks with their file and Bash groups in the chat, and the preview animating each step. Drop the connection mid-build to see the WebSocket channels retry while the SSE timeline keeps going."
-      note="A simulation for this portfolio, rebuilt after cocoding.ai’s main branch. The block types, messages, preview states, the 5-attempt cap, and the file_list and history resync mirror the app; the events are scripted and the drop is fake."
+      instructions="Run the prompt and watch a build stream into the workspace: agent blocks with their file and Bash groups in the chat, new files in the explorer, and the preview animating each step until the app is ready. Open any file to read it in Code. Drop the connection mid-build to see the WebSocket channels retry while the SSE timeline keeps going."
+      note="A simulation for this portfolio, rebuilt after cocoding.ai’s main branch. The block types, messages, preview states, the 5-attempt cap, and the file_list and history resync mirror the app; the events are scripted, the drop is fake, and the code is illustrative."
     >
       <div className="cw">
-        <div className="cw-canvas" data-theme="dark">
-          <div className="cw-toolbar-pill">
-            <button type="button" className="cw-run" onClick={start} disabled={streaming}>
-              <Icon glyph={Lucide.SEND} className="cw-icon" />
+        <div className="cw-controls">
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="demo-button demo-button-strong" onClick={start} disabled={streaming}>
               {run === RunStatus.IDLE ? 'Run prompt' : 'Run again'}
             </button>
-            <span className="cw-run-hint" data-state={offline ? 'offline' : run}>
-              {status}
-            </span>
+            <button type="button" className="demo-button" onClick={drop} disabled={!streaming || offline}>
+              Drop the connection
+            </button>
           </div>
+          <p className="cw-status" data-state={offline ? 'offline' : run} aria-live="polite">
+            {status}
+          </p>
+        </div>
 
-          <div className="cw-workspace">
-            <section className="cw-chat" aria-label="Chat">
-              <div className="cw-chat-scroll" ref={chatRef}>
-                <p className="cw-wordmark">
-                  cocoding<span>.ai</span>
-                </p>
-                <p className="cw-bubble">build a todo app</p>
-                {run === RunStatus.IDLE ? <p className="cw-muted cw-hint">Run the prompt to start the build.</p> : null}
-                <ChatTranscript transcript={transcript} streaming={streaming} />
-              </div>
-              <div className="cw-input" aria-hidden="true">
-                <span className="cw-muted">Your message here...</span>
-                <span className="cw-input-row">
-                  <span className="cw-ghost">
-                    <Icon glyph={Lucide.IMAGE_PLUS} className="cw-icon" /> Image
-                  </span>
-                  <span className="cw-send">
-                    <Icon glyph={Lucide.SEND} className="cw-icon" /> Send
-                  </span>
+        <div className="cw-ide" data-theme="dark">
+          <section className="cw-chat" aria-label="Chat">
+            <div className="cw-chat-head">
+              <p className="cw-wordmark">
+                cocoding<span>.ai</span>
+              </p>
+              <Icon glyph={Lucide.ARROW_LEFT_FROM_LINE} className="cw-icon cw-muted" />
+            </div>
+            <div className="cw-chat-scroll" ref={chatRef}>
+              <p className="cw-bubble">build a todo app</p>
+              {run === RunStatus.IDLE ? <p className="cw-muted cw-hint">Run the prompt to start the build.</p> : null}
+              <ChatTranscript transcript={transcript} streaming={streaming} onOpen={open} />
+            </div>
+            <div className="cw-input" aria-hidden="true">
+              <span className="cw-placeholder">Your message here...</span>
+              <span className="cw-input-row">
+                <span className="cw-ghost">
+                  <Icon glyph={Lucide.IMAGE_PLUS} className="cw-icon" /> Image
                 </span>
-              </div>
-            </section>
+                <span className="cw-send">
+                  <Icon glyph={Lucide.SEND} className="cw-icon" /> Send
+                </span>
+              </span>
+            </div>
+          </section>
 
-            <section className="cw-preview" aria-label="Preview">
-              <div className="cw-toolbar" aria-hidden="true">
-                <span className="cw-toggle">
-                  <span>
-                    <Icon glyph={Lucide.CODE} className="cw-icon" /> Code
-                  </span>
-                  <span data-active>
-                    <Icon glyph={Lucide.EYE} className="cw-icon" /> Preview
-                  </span>
-                </span>
+          <Explorer files={files} open={mode === Mode.CODE ? openFile : null} fresh={fresh} onOpen={open} />
+
+          <section className="cw-main" aria-label="Editor">
+            <div className="cw-toolbar">
+              <div className="cw-toggle" role="group" aria-label="Mode">
+                <button type="button" aria-pressed={mode === Mode.CODE} onClick={() => setMode(Mode.CODE)}>
+                  <Icon glyph={Lucide.CODE} className="cw-icon" /> Code
+                </button>
+                <button type="button" aria-pressed={mode === Mode.PREVIEW} onClick={() => setMode(Mode.PREVIEW)}>
+                  <Icon glyph={Lucide.EYE} className="cw-icon" /> Preview
+                </button>
+              </div>
+              <span className="cw-actions" aria-hidden="true">
                 <span className="cw-publish">
                   <Icon glyph={Lucide.GLOBE} className="cw-icon" /> Publish
                 </span>
-              </div>
+                <span className="cw-github">
+                  <Icon glyph={Lucide.GITHUB} className="cw-icon" /> Github
+                </span>
+              </span>
+            </div>
+            {mode === Mode.CODE ? (
+              <CodeView path={openFile} terminal={terminal} />
+            ) : run === RunStatus.DONE ? (
+              <TodoPreview />
+            ) : (
               <div className="cw-stage">
                 {activity ? (
                   <div key={`${activity.scene}-${activity.subject ?? ''}`} className="cw-scene">
@@ -625,8 +1017,8 @@ export default function StreamDemo() {
                   {activity?.message ?? 'Tell cocoding.ai what you want to build'}
                 </p>
               </div>
-            </section>
-          </div>
+            )}
+          </section>
         </div>
 
         <div className="cw-panel">
@@ -647,9 +1039,6 @@ export default function StreamDemo() {
                 </li>
               ))}
             </ul>
-            <button type="button" className="demo-button" onClick={drop} disabled={!streaming || offline}>
-              Drop the connection
-            </button>
           </div>
 
           <dl className="cw-now" aria-live="polite">
@@ -659,7 +1048,7 @@ export default function StreamDemo() {
             </div>
             <div>
               <dt>Preview</dt>
-              <dd>{activity ? SCENE_LABEL[activity.scene] : 'cocoding.ai logo'}</dd>
+              <dd>{run === RunStatus.DONE ? 'the generated app' : activity ? SCENE_LABEL[activity.scene] : 'cocoding.ai logo'}</dd>
             </div>
             <div>
               <dt>Message</dt>
