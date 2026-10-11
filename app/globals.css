@@ -4083,3 +4083,360 @@
   border-left: 3px solid #94cc7a;
   border-radius: 4px;
 }
+
+/* ───────────────────────── Schema demo (unlayered) ─────────────────────────
+   Same reason as the planner: React Flow's base.css is unlayered. */
+.sx-layout {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.sx-canvas {
+  position: relative;
+  height: clamp(26rem, 52vw, 36rem);
+  overflow: hidden;
+  color: var(--color-paper);
+  border-radius: 10px;
+  background: #0f0f0f;
+}
+
+.sx-toolbar {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem;
+  transform: translateX(-50%);
+  border: 1px solid #30302c;
+  border-radius: 999px;
+  background: #1b1b1a;
+}
+
+.sx-search {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0 0.85rem;
+  min-height: 2.5rem;
+  color: var(--color-fog);
+  border-radius: 999px;
+  background: #151514;
+}
+
+.sx-search input {
+  width: min(15rem, 42vw);
+  font-size: 0.9375rem;
+  color: var(--color-paper);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.sx-search input::placeholder {
+  color: #7a796f;
+}
+
+.sx-search:focus-within {
+  box-shadow: 0 0 0 1.5px var(--color-stream);
+}
+
+.sx-organize {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  font-size: 0.9375rem;
+  font-weight: 560;
+  color: var(--color-paper);
+  border-radius: 999px;
+  background: #2c2c29;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.sx-organize:hover {
+  background: #3a3a36;
+  box-shadow: 0 0 0 1.5px var(--color-signal);
+}
+
+.sx-icon {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+}
+
+.sx-icon-sm {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.sx-node {
+  width: 210px;
+  overflow: visible;
+  font-size: 0.8125rem;
+  color: var(--color-paper);
+  border: 1px solid #30302c;
+  border-radius: 10px;
+  background: #1b1b1a;
+  cursor: pointer;
+  transition: opacity 200ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.sx-node[data-selected] {
+  box-shadow: 0 0 0 1.5px rgba(244, 241, 232, 0.7);
+}
+
+.sx-node[data-role="focus"] {
+  border-color: var(--color-paper);
+  box-shadow: 0 0 0 1.5px var(--color-paper);
+}
+
+.sx-node[data-role="references"] {
+  border-color: var(--color-stream);
+  box-shadow: 0 0 0 1.5px var(--color-stream);
+}
+
+.sx-node[data-role="referenced-by"] {
+  border-color: var(--color-ledger);
+  box-shadow: 0 0 0 1.5px var(--color-ledger);
+}
+
+.sx-node[data-role="match"] {
+  border-color: var(--color-signal);
+}
+
+.sx-node[data-role="dim"] {
+  opacity: 0.3;
+}
+
+.sx-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 44px;
+  padding: 0 0.75rem;
+  color: var(--color-fog);
+  border-bottom: 1px solid #30302c;
+  border-radius: 10px 10px 0 0;
+  background: #232321;
+}
+
+.sx-name {
+  font-weight: 600;
+  color: var(--color-paper);
+}
+
+.sx-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-stretch: 87.5%;
+}
+
+.sx-columns {
+  padding: 4px 0;
+}
+
+.sx-column {
+  position: relative;
+  display: grid;
+  grid-template-columns: 0.9rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+  height: 26px;
+  padding: 0 0.75rem;
+}
+
+.sx-column[data-key="primary"] {
+  color: #f0b961;
+}
+
+.sx-column[data-key="foreign"] {
+  color: #b8d0ff;
+}
+
+.sx-column[data-match] {
+  background: color-mix(in oklab, var(--color-signal) 16%, transparent);
+}
+
+.sx-key {
+  display: inline-flex;
+}
+
+.sx-column-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sx-type {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-stretch: 87.5%;
+  color: var(--color-fog);
+}
+
+.sx-canvas .react-flow__handle.sx-handle {
+  width: 9px;
+  height: 9px;
+  min-width: 0;
+  min-height: 0;
+  border: 2px solid #0f0f0f;
+  border-radius: 999px;
+}
+
+.sx-canvas .react-flow__handle.sx-handle-pk {
+  left: -5px;
+  background: var(--color-ledger);
+}
+
+.sx-canvas .react-flow__handle.sx-handle-fk {
+  right: -5px;
+  background: var(--color-stream);
+}
+
+.sx-canvas .react-flow__edge-path {
+  stroke: #7a796f;
+  stroke-width: 1.5;
+  transition: opacity 200ms ease;
+}
+
+.sx-canvas .sx-edge-references .react-flow__edge-path {
+  stroke: var(--color-stream);
+  stroke-width: 2;
+}
+
+.sx-canvas .sx-edge-referenced .react-flow__edge-path {
+  stroke: var(--color-ledger);
+  stroke-width: 2;
+}
+
+.sx-canvas .sx-edge-dim .react-flow__edge-path {
+  opacity: 0.15;
+}
+
+.sx-canvas .react-flow__attribution {
+  font-size: 10px;
+  background: transparent;
+}
+
+.sx-canvas .react-flow__attribution a {
+  color: var(--color-fog);
+}
+
+.sx-panel {
+  display: grid;
+  align-content: start;
+  gap: 1.25rem;
+}
+
+@media (width >= 64rem) {
+  .sx-panel {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1.2fr);
+    align-items: start;
+  }
+}
+
+.sx-tables {
+  padding: 0;
+  border: 0;
+}
+
+.sx-table-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  font-size: 0.9375rem;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.sx-table-button:hover {
+  background: color-mix(in oklab, var(--color-surface) 60%, transparent);
+}
+
+.sx-table-button[aria-pressed="true"] {
+  border-color: var(--color-ink);
+  background: var(--color-surface);
+}
+
+.sx-table-button[data-role="references"] {
+  box-shadow: inset 3px 0 0 #3f6fd1;
+}
+
+.sx-table-button[data-role="referenced-by"] {
+  box-shadow: inset 3px 0 0 var(--color-ledger);
+}
+
+.sx-table-button[data-role="dim"] {
+  color: var(--color-graphite);
+}
+
+.sx-relations {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  font-size: 0.9375rem;
+  border-radius: 6px;
+  background: var(--color-surface);
+}
+
+.sx-relations > div {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 0.75rem;
+}
+
+.sx-relations dt {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+}
+
+.sx-relations [data-role] dt::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.sx-relations [data-role="references"] dt::before {
+  background: #0f0f0f;
+  box-shadow: 0 0 0 2px var(--color-stream);
+}
+
+.sx-relations [data-role="referenced-by"] dt::before {
+  background: #0f0f0f;
+  box-shadow: 0 0 0 2px var(--color-ledger);
+}
+
+.sx-query {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+  border: 1px solid var(--color-ink);
+  border-radius: 8px;
+  background: #fbfaf6;
+}
+
+.sx-query pre {
+  overflow-x: auto;
+  padding: 0.85rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-stretch: 87.5%;
+  line-height: 1.6;
+  color: var(--color-paper);
+  border-radius: 6px;
+  background: #0f0f0f;
+}

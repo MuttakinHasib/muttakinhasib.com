@@ -27,6 +27,9 @@ const demos: Record<ProjectSlug, ComponentType> = {
   [ProjectSlug.IGOT]: dynamic(() => import('@/components/demos/ExecutionOrderDemo'), { loading: DemoLoading }),
 };
 
+/** The schema demo sits in cocoding.ai's Database Explorer section, outside the main demo slot. */
+export const SchemaExplorerDemo = dynamic(() => import('@/components/demos/SchemaDemo'), { loading: DemoLoading });
+
 export function CaseStudyDemo({ slug }: CaseStudyDemoProps) {
   const Demo = demos[slug];
   return <Demo />;

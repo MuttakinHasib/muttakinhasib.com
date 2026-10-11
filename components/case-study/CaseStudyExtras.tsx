@@ -1,10 +1,10 @@
 import type { JSX } from 'react';
 import { ActivityPreviewVisual } from '@/components/visuals/ActivityPreviewVisual';
-import { DatabaseExplorerVisual } from '@/components/visuals/DatabaseExplorerVisual';
 import { GroupConnectionVisual } from '@/components/visuals/GroupConnectionVisual';
 import { NodeShelfVisual } from '@/components/visuals/NodeShelfVisual';
 import { ProjectSlug } from '@/content/types';
 import { CaseSection, NoteList } from './CaseSection';
+import { SchemaExplorerDemo } from './CaseStudyDemo';
 
 interface CaseStudyExtrasProps {
   slug: ProjectSlug;
@@ -66,13 +66,14 @@ function CocodingExtras() {
         <p className="type-small text-graphite">Original reconstructions after the live preview states.</p>
       </CaseSection>
       <CaseSection id="database-explorer" title="Database Explorer" wide>
-        <DatabaseExplorerVisual />
         <p>
           The Database Explorer lets people look inside their app’s database without leaving the IDE. It connects
           over its own WebSocket and opens each view as an editor tab: a filterable, paginated table with a record
           editor, a SQL editor that runs on Cmd/Ctrl + Enter and keeps a query history, and a schema diagram that ELK
-          lays out top-down, with search, reset, and PNG or SVG export. I wrote all of it.
+          lays out top-down, with search, reset, and PNG or SVG export. I wrote all of it. Below is my own take on the
+          schema view, with a few things I would add.
         </p>
+        <SchemaExplorerDemo />
       </CaseSection>
     </>
   );
