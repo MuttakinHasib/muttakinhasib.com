@@ -164,52 +164,56 @@ function Chip({ x, y, label, active }: ChipProps) {
 
 /** Creative Analyzer: a creative in, an ad-effectiveness read out. */
 function CreativeAnalyzer({ x, y }: Pt) {
-  const ax = x + 150;
+  const iw = 150;
+  const ax = x + iw + 40;
+  const aw = 300;
+  const cx = ax + aw / 2;
   const score = 71;
-  const barX = ax + 24;
-  const barW = 182;
+  const barX = ax + 28;
+  const barW = aw - 56;
   return (
     <g>
-      <Card x={x} y={y + 70} w={110} h={150} name="Import" />
-      <VaseArt x={x + 8} y={y + 78} w={94} h={110} />
-      <text x={x + 12} y={y + 208} className="v-kicker" fill={FOG}>
+      <Card x={x} y={y + 70} w={iw} h={164} name="Import" />
+      <VaseArt x={x + 8} y={y + 78} w={iw - 16} h={118} />
+      <text x={x + 14} y={y + 220} className="v-kicker" fill={FOG}>
         + Add more
       </text>
-      <path d={`M${x + 110} ${y + 140}C${x + 130} ${y + 140} ${x + 128} ${y + 60} ${ax} ${y + 60}`} fill="none" stroke={TYPE_COLOR[PortType.IMAGE]} strokeWidth="2" />
-      <PortLabel x={x + 110} y={y + 140} type={PortType.IMAGE} side="out" />
+      <path d={`M${x + iw} ${y + 150}C${x + iw + 22} ${y + 150} ${ax - 22} ${y + 60} ${ax} ${y + 60}`} fill="none" stroke={TYPE_COLOR[PortType.IMAGE]} strokeWidth="2" />
+      <PortLabel x={x + iw} y={y + 150} type={PortType.IMAGE} side="out" />
 
-      <Card x={ax} y={y + 20} w={230} h={300} name="Creative Analyzer" />
+      <Card x={ax} y={y + 20} w={aw} h={300} name="Creative Analyzer" />
       <PortLabel x={ax} y={y + 60} type={PortType.IMAGE} side="in" />
-      <text x={ax + 115} y={y + 44} textAnchor="middle" className="v-kicker" fill={FOG}>
+      <text x={cx} y={y + 46} textAnchor="middle" className="v-kicker" fill={FOG}>
         ACE score
       </text>
-      <Ring x={ax + 115} y={y + 88} r={30} value={score} />
-      <rect x={barX} y={y + 134} width={barW * 0.33} height={5} rx={2.5} fill="#f87171" />
-      <rect x={barX + barW * 0.33} y={y + 134} width={barW * 0.34} height={5} fill="#facc15" />
-      <rect x={barX + barW * 0.67} y={y + 134} width={barW * 0.33} height={5} rx={2.5} fill="#4ade80" />
-      <rect x={barX + (barW * score) / 100 - 2} y={y + 128} width={4} height={17} rx={2} fill={PAPER} />
-      <text x={barX} y={y + 160} className="v-kicker" fill="#f87171">
+      <Ring x={cx} y={y + 90} r={30} value={score} />
+      <rect x={barX} y={y + 136} width={barW * 0.33} height={5} rx={2.5} fill="#f87171" />
+      <rect x={barX + barW * 0.33} y={y + 136} width={barW * 0.34} height={5} fill="#facc15" />
+      <rect x={barX + barW * 0.67} y={y + 136} width={barW * 0.33} height={5} rx={2.5} fill="#4ade80" />
+      <rect x={barX + (barW * score) / 100 - 2} y={y + 130} width={4} height={17} rx={2} fill={PAPER} />
+      <text x={barX} y={y + 162} className="v-kicker" fill="#f87171">
         &lt; 33
       </text>
-      <text x={barX + barW / 2} y={y + 160} textAnchor="middle" className="v-kicker" fill="#facc15">
+      <text x={barX + barW / 2} y={y + 162} textAnchor="middle" className="v-kicker" fill="#facc15">
         33–66
       </text>
-      <text x={barX + barW} y={y + 160} textAnchor="end" className="v-kicker" fill="#4ade80">
+      <text x={barX + barW} y={y + 162} textAnchor="end" className="v-kicker" fill="#4ade80">
         &gt; 66
       </text>
-      <rect x={ax + 40} y={y + 172} width={150} height={26} rx={13} fill="#262624" />
-      <text x={ax + 115} y={y + 189} textAnchor="middle" className="v-kicker" fill={PAPER}>
+      <rect x={cx - 85} y={y + 174} width={170} height={28} rx={14} fill="#262624" stroke={STROKE} />
+      <text x={cx} y={y + 193} textAnchor="middle" className="v-kicker" fill={PAPER}>
         Detailed report
       </text>
-      <text x={ax + 16} y={y + 224} className="v-kicker" fill={FOG}>
+      <text x={ax + 20} y={y + 228} className="v-kicker" fill={FOG}>
         Choose app
       </text>
-      <rect x={ax + 16} y={y + 232} width={198} height={30} rx={8} fill="#232321" stroke={STROKE} />
-      <text x={ax + 28} y={y + 252} className="v-kicker" fill={PAPER}>
-        Social media post ▾
+      <rect x={ax + 20} y={y + 236} width={aw - 40} height={32} rx={8} fill="#232321" stroke={STROKE} />
+      <text x={ax + 32} y={y + 257} className="v-kicker" fill={PAPER}>
+        Social media post
       </text>
-      <rect x={ax + 110} y={y + 278} width={104} height={28} rx={14} fill={PAPER} />
-      <text x={ax + 162} y={y + 296} textAnchor="middle" className="v-kicker" fill={INK}>
+      <path d={`M${ax + aw - 40} ${y + 249}l5 5 5-5`} fill="none" stroke={FOG} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x={ax + aw - 140} y={y + 280} width={120} height={28} rx={14} fill={PAPER} />
+      <text x={ax + aw - 80} y={y + 299} textAnchor="middle" className="v-kicker" fill={INK}>
         Rerun test
       </text>
     </g>
@@ -444,7 +448,7 @@ function Wide() {
   return (
     <>
       <Dots width={1200} height={760} color="rgba(244,241,232,0.07)" background={CANVAS} />
-      <CreativeAnalyzer x={110} y={30} />
+      <CreativeAnalyzer x={55} y={30} />
       <CombineAudioVideo x={600} y={30} />
       <AdMaker x={-20} y={400} />
       <Storyboard x={640} y={400} />
@@ -456,7 +460,7 @@ function Narrow() {
   return (
     <>
       <Dots width={600} height={1450} color="rgba(244,241,232,0.07)" background={CANVAS} />
-      <CreativeAnalyzer x={110} y={20} />
+      <CreativeAnalyzer x={55} y={20} />
       <CombineAudioVideo x={0} y={370} />
       <AdMaker x={70} y={770} />
       <Storyboard x={10} y={1110} />
