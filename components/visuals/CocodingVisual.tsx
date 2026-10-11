@@ -1,4 +1,5 @@
 import { type EditorGlyph, EditorIcon } from './editor-icons';
+import { FOLDER_TWOTONE, FileTypeIcon } from './file-icons';
 import { Lucide } from './lucide-icons';
 import { type Pt, VizFrame } from './primitives';
 
@@ -13,9 +14,7 @@ import { type Pt, VizFrame } from './primitives';
 
 const FileKind = {
   FOLDER: 'folder',
-  TSX: 'tsx',
-  TS: 'ts',
-  JSON: 'json',
+  FILE: 'file',
 } as const;
 type FileKind = (typeof FileKind)[keyof typeof FileKind];
 
@@ -55,10 +54,6 @@ interface TreeEntry {
 interface TreeProps extends Pt {
   w: number;
   entries: readonly TreeEntry[];
-}
-
-interface FileIconProps extends Pt {
-  kind: FileKind;
 }
 
 interface EditorTabProps extends Pt {
@@ -158,16 +153,16 @@ const tree: TreeEntry[] = [
   { depth: 0, kind: FileKind.FOLDER, name: 'Workspace' },
   { depth: 1, kind: FileKind.FOLDER, name: 'src' },
   { depth: 2, kind: FileKind.FOLDER, name: 'app' },
-  { depth: 3, kind: FileKind.TSX, name: 'layout.tsx' },
-  { depth: 3, kind: FileKind.TSX, name: 'page.tsx' },
+  { depth: 3, kind: FileKind.FILE, name: 'layout.tsx' },
+  { depth: 3, kind: FileKind.FILE, name: 'page.tsx' },
   { depth: 2, kind: FileKind.FOLDER, name: 'components' },
-  { depth: 3, kind: FileKind.TSX, name: 'AddTodo.tsx' },
-  { depth: 3, kind: FileKind.TSX, name: 'TodoItem.tsx' },
-  { depth: 3, kind: FileKind.TSX, name: 'TodoList.tsx', selected: true },
+  { depth: 3, kind: FileKind.FILE, name: 'AddTodo.tsx' },
+  { depth: 3, kind: FileKind.FILE, name: 'TodoItem.tsx' },
+  { depth: 3, kind: FileKind.FILE, name: 'TodoList.tsx', selected: true },
   { depth: 2, kind: FileKind.FOLDER, name: 'lib' },
-  { depth: 3, kind: FileKind.TS, name: 'todos.ts' },
-  { depth: 1, kind: FileKind.JSON, name: 'package.json' },
-  { depth: 1, kind: FileKind.JSON, name: 'tsconfig.json' },
+  { depth: 3, kind: FileKind.FILE, name: 'todos.ts' },
+  { depth: 1, kind: FileKind.FILE, name: 'package.json' },
+  { depth: 1, kind: FileKind.FILE, name: 'tsconfig.json' },
 ];
 
 const todos = [
@@ -177,40 +172,25 @@ const todos = [
   { label: 'Water the plants' },
 ];
 
-function ReactIcon({ x, y }: Pt) {
+/** The explorer's folder: line-md's two-tone folder. */
+function FolderIcon({ x, y }: Pt) {
   return (
-    <g fill="none" stroke="#61dafb" strokeWidth="1">
-      {[0, 60, 120].map((angle) => (
-        <ellipse key={angle} cx={x} cy={y} rx={6} ry={2.3} transform={`rotate(${angle} ${x} ${y})`} />
-      ))}
-      <circle cx={x} cy={y} r={1.1} fill="#61dafb" stroke="none" />
-    </g>
+    <svg
+      x={x - 7}
+      y={y - 7}
+      width={14}
+      height={14}
+      viewBox={`0 0 ${FOLDER_TWOTONE.box} ${FOLDER_TWOTONE.box}`}
+      fill="none"
+      stroke={ASH_400}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={FOLDER_TWOTONE.body} fill={ASH_400} fillOpacity={0.3} />
+      <path d={FOLDER_TWOTONE.tab} />
+    </svg>
   );
-}
-
-/** The explorer's per-type file icons: a folder, the React atom, a TS badge, JSON braces. */
-function FileIcon({ x, y, kind }: FileIconProps) {
-  switch (kind) {
-    case FileKind.FOLDER:
-      return <EditorIcon x={x - 7} y={y - 7} glyph={Lucide.FOLDER} size={14} color={ASH_400} />;
-    case FileKind.TSX:
-      return <ReactIcon x={x} y={y} />;
-    case FileKind.TS:
-      return (
-        <g>
-          <rect x={x - 6} y={y - 6} width={12} height={12} rx={2} fill="#3178c6" />
-          <text x={x} y={y + 3} textAnchor="middle" fontSize={6.5} fontWeight={700} fill="#fff">
-            TS
-          </text>
-        </g>
-      );
-    case FileKind.JSON:
-      return (
-        <text x={x} y={y + 4} textAnchor="middle" style={MONO} fontSize={10} fontWeight={700} fill="#cbcb41">
-          {'{}'}
-        </text>
-      );
-  }
 }
 
 function AgentAvatar({ x, y }: Pt) {
@@ -250,7 +230,7 @@ function FileRow({ x, y, name, path, w = 0, active }: FileRowProps) {
   return (
     <g>
       {active ? <rect x={x - 4} y={y - 15} width={w} height={21} rx={4} fill="rgba(255,255,255,0.06)" /> : null}
-      <ReactIcon x={x + 7} y={y - 4} />
+      <FileTypeIcon x={x} y={y - 11} name={name} />
       <text x={x + 22} y={y} className="v-small" fill={WHITE}>
         {name}
         <tspan dx={7} fill={ASH_500} fontSize={10.5}>
@@ -348,7 +328,7 @@ function Tree({ x, y, w, entries }: TreeProps) {
         return (
           <g key={entry.name}>
             {entry.selected ? <rect x={x - 6} y={cy - 10} width={w} height={20} rx={4} fill="rgba(255,255,255,0.1)" /> : null}
-            <FileIcon x={ix} y={cy} kind={entry.kind} />
+            {entry.kind === FileKind.FOLDER ? <FolderIcon x={ix} y={cy} /> : <FileTypeIcon x={ix - 7} y={cy - 7} name={entry.name} />}
             <text x={ix + 13} y={cy + 4} fontSize={12.5} fill={entry.selected ? WHITE : GRAY}>
               {entry.name}
             </text>
@@ -388,7 +368,7 @@ function EditorTab({ x, y, w, name, active }: EditorTabProps) {
         stroke={active ? ASH_500 : LINE}
         strokeWidth={active ? 1.5 : 1}
       />
-      <ReactIcon x={x + 13} y={y + 14} />
+      <FileTypeIcon x={x + 6} y={y + 7} name={name} />
       <text x={x + 26} y={y + 18.5} fontSize={12.5} fill={GRAY}>
         {name}
       </text>

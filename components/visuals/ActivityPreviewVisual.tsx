@@ -1,3 +1,4 @@
+import { FileTypeIcon } from './file-icons';
 import { type Pt, VizFrame } from './primitives';
 
 /**
@@ -141,7 +142,7 @@ function FileGrid({ x, y, w, h }: Box) {
               fill={active ? 'rgba(167,139,250,0.15)' : 'rgba(255,255,255,0.03)'}
               stroke={active ? 'rgba(167,139,250,0.45)' : 'none'}
             />
-            <rect x={cx + 8} y={cy + 8} width={8} height={8} rx={2} fill={file.endsWith('.css') ? '#38bdf8' : file.endsWith('.json') ? '#facc15' : '#61dafb'} opacity={0.8} />
+            <FileTypeIcon x={cx + 6} y={cy + 6} name={file} size={12} />
             <text x={cx + 22} y={cy + 15.5} style={MONO} fontSize={9.5} fill={active ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)'}>
               {file}
             </text>
