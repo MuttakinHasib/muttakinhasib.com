@@ -225,7 +225,7 @@ export default function SchemaDemo() {
             </label>
             <button type="button" className="sx-organize" onClick={organize}>
               <Icon glyph={Lucide.WORKFLOW} className="sx-icon" />
-              Organize
+              <span className="sx-organize-label">Organize</span>
             </button>
           </div>
           <ReactFlow
@@ -243,7 +243,7 @@ export default function SchemaDemo() {
             zoomOnDoubleClick={false}
             preventScrolling={false}
             nodesConnectable={false}
-            minZoom={0.35}
+            minZoom={0.2}
             maxZoom={1.4}
             aria-label="Schema diagram"
           >

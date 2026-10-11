@@ -2432,7 +2432,7 @@
     display: grid;
     align-content: start;
     gap: 0.85rem;
-    height: 24rem;
+    height: clamp(18rem, 60vw, 24rem);
     padding-right: 0.35rem;
     overflow-y: auto;
     scrollbar-width: thin;
@@ -2671,6 +2671,7 @@
 
   .cw-toolbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
@@ -4093,7 +4094,7 @@
 
 .sx-canvas {
   position: relative;
-  height: clamp(26rem, 52vw, 36rem);
+  height: clamp(18rem, 52vw, 36rem);
   overflow: hidden;
   color: var(--color-paper);
   border-radius: 10px;
@@ -4127,7 +4128,7 @@
 }
 
 .sx-search input {
-  width: min(15rem, 42vw);
+  width: clamp(7rem, 34vw, 15rem);
   font-size: 0.9375rem;
   color: var(--color-paper);
   background: transparent;
@@ -4166,6 +4167,21 @@
   flex: none;
   width: 1rem;
   height: 1rem;
+}
+
+@media (width < 30rem) {
+  .sx-organize {
+    padding: 0 0.8rem;
+  }
+
+  .sx-organize-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 .sx-icon-sm {
