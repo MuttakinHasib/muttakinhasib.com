@@ -32,7 +32,6 @@ interface PortLabelProps extends Pt {
 interface RingProps extends Pt {
   r: number;
   value: number;
-  label?: string;
 }
 
 interface ChipProps extends Pt {
@@ -128,30 +127,25 @@ function PortLabel({ x, y, type, label, side, connected }: PortLabelProps) {
   );
 }
 
-function Ring({ x, y, r, value, label }: RingProps) {
+function Ring({ x, y, r, value }: RingProps) {
   const circumference = 2 * Math.PI * r;
   return (
     <g>
-      <circle cx={x} cy={y} r={r} fill="none" stroke="#2c2c29" strokeWidth={r > 24 ? 6 : 4} />
+      <circle cx={x} cy={y} r={r} fill="none" stroke="#2c2c29" strokeWidth={6} />
       <circle
         cx={x}
         cy={y}
         r={r}
         fill="none"
         stroke={zoneColor(value)}
-        strokeWidth={r > 24 ? 6 : 4}
+        strokeWidth={6}
         strokeLinecap="round"
         strokeDasharray={`${(circumference * value) / 100} ${circumference}`}
         transform={`rotate(-90 ${x} ${y})`}
       />
-      <text x={x} y={y + (r > 24 ? 7 : 4)} textAnchor="middle" className={r > 24 ? 'v-title' : 'v-kicker'} fill={PAPER}>
+      <text x={x} y={y + 7} textAnchor="middle" className="v-title" fill={PAPER}>
         {value}
       </text>
-      {label ? (
-        <text x={x} y={y + r + 18} textAnchor="middle" className="v-kicker" fill={FOG}>
-          {label}
-        </text>
-      ) : null}
     </g>
   );
 }
@@ -203,7 +197,7 @@ function CreativeAnalyzer({ x, y }: Pt) {
       <text x={barX + barW} y={y + 160} textAnchor="end" className="v-kicker" fill="#4ade80">
         &gt; 66
       </text>
-      <rect x={ax + 50} y={y + 172} width={130} height={26} rx={13} fill="#262624" />
+      <rect x={ax + 40} y={y + 172} width={150} height={26} rx={13} fill="#262624" />
       <text x={ax + 115} y={y + 189} textAnchor="middle" className="v-kicker" fill={PAPER}>
         Detailed report
       </text>
@@ -214,22 +208,10 @@ function CreativeAnalyzer({ x, y }: Pt) {
       <text x={ax + 28} y={y + 252} className="v-kicker" fill={PAPER}>
         Social media post ▾
       </text>
-      <rect x={ax + 128} y={y + 278} width={86} height={28} rx={14} fill={PAPER} />
-      <text x={ax + 171} y={y + 296} textAnchor="middle" className="v-kicker" fill={INK}>
+      <rect x={ax + 110} y={y + 278} width={104} height={28} rx={14} fill={PAPER} />
+      <text x={ax + 162} y={y + 296} textAnchor="middle" className="v-kicker" fill={INK}>
         Rerun test
       </text>
-
-      <rect x={x + 400} y={y + 20} width={160} height={300} rx={14} fill="#141413" stroke={STROKE} />
-      <Ring x={x + 440} y={y + 70} r={18} value={74} label="Attention" />
-      <Ring x={x + 520} y={y + 70} r={18} value={68} label="Branding" />
-      <Ring x={x + 440} y={y + 160} r={18} value={81} label="Ease" />
-      <Ring x={x + 520} y={y + 160} r={18} value={58} label="Emotion" />
-      <text x={x + 416} y={y + 250} className="v-kicker" fill={FOG}>
-        Export report
-      </text>
-      <Chip x={x + 412} y={y + 262} label="PDF" />
-      <Chip x={x + 466} y={y + 262} label="XLSX" />
-      <Chip x={x + 412} y={y + 290} label="CSV" />
     </g>
   );
 }
@@ -452,7 +434,7 @@ function Storyboard({ x, y }: Pt) {
       </text>
       <rect x={nx + 18} y={y + 282} width={nw - 36} height={26} rx={13} fill="#232321" stroke={STROKE} />
       <text x={nx + 32} y={y + 299} className="v-kicker" fill={FOG}>
-        Slow push-in, same vase, morning to dusk…
+        Slow push-in, dusk light…
       </text>
     </g>
   );
@@ -462,10 +444,10 @@ function Wide() {
   return (
     <>
       <Dots width={1200} height={760} color="rgba(244,241,232,0.07)" background={CANVAS} />
-      <CreativeAnalyzer x={30} y={30} />
+      <CreativeAnalyzer x={110} y={30} />
       <CombineAudioVideo x={600} y={30} />
       <AdMaker x={-20} y={400} />
-      <Storyboard x={620} y={400} />
+      <Storyboard x={640} y={400} />
     </>
   );
 }
@@ -474,7 +456,7 @@ function Narrow() {
   return (
     <>
       <Dots width={600} height={1450} color="rgba(244,241,232,0.07)" background={CANVAS} />
-      <CreativeAnalyzer x={20} y={20} />
+      <CreativeAnalyzer x={110} y={20} />
       <CombineAudioVideo x={0} y={370} />
       <AdMaker x={70} y={770} />
       <Storyboard x={10} y={1110} />
@@ -485,7 +467,7 @@ function Narrow() {
 export function NodeShelfVisual() {
   return (
     <VizFrame
-      label="Reconstructions of four more nodes on the same canvas. Creative Analyzer scores an imported creative with an ACE score ring, a red, yellow, and green zone bar, KPI rings for attention, branding, ease, and emotion, an app-type selector, and PDF, XLSX, and CSV export. Combine Audio and Video shows the result above a timeline: three green video clips packed in one lane, two pink audio clips in lanes of their own, a volume rail with the video track muted, and Audio 2 mid-drag, snapped to the 0:08 edge with a dashed playhead. Ad Maker takes product, avatar, and reference inputs with UGC, Hook, and Scene modes. Storyboard turns a prompt and image into a three by three grid of frames."
+      label="Reconstructions of four more nodes on the same canvas. Creative Analyzer scores an imported creative with an ACE score ring, a red, yellow, and green zone bar, a detailed-report button, and an app-type selector. Combine Audio and Video shows the result above a timeline: three green video clips packed in one lane, two pink audio clips in lanes of their own, a volume rail with the video track muted, and Audio 2 mid-drag, snapped to the 0:08 edge with a dashed playhead. Ad Maker takes product, avatar, and reference inputs with UGC, Hook, and Scene modes. Storyboard turns a prompt and image into a three by three grid of frames."
       wide={<Wide />}
       narrow={<Narrow />}
       narrowBox="0 0 600 1450"
