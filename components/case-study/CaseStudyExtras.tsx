@@ -1,4 +1,5 @@
 import type { JSX } from 'react';
+import { GroupConnectionVisual } from '@/components/visuals/GroupConnectionVisual';
 import { NodeShelfVisual } from '@/components/visuals/NodeShelfVisual';
 import { ProjectSlug } from '@/content/types';
 import { CaseSection, NoteList } from './CaseSection';
@@ -9,7 +10,17 @@ interface CaseStudyExtrasProps {
 
 function AppBuilderExtras() {
   return (
-    <CaseSection id="more-nodes" title="Other nodes I shipped on this canvas" wide>
+    <>
+      <CaseSection id="group-connections" title="Group connections" wide>
+        <GroupConnectionVisual />
+        <p>
+          Wiring ten reference images into a node used to take ten drags. A section or multi-selection now grows
+          one output handle per data type. Drop it on a node and every member lands in its own slot of the
+          roomiest compatible input, with new slots added up to that input’s limit. Inputs that can’t take the
+          type dim while the wire is in the air, and a group with mixed outputs explains why it can’t connect.
+        </p>
+      </CaseSection>
+      <CaseSection id="more-nodes" title="Other nodes I shipped on this canvas" wide>
       <NodeShelfVisual />
       <p className="type-small text-graphite">Original reconstructions after the live nodes.</p>
       <NoteList
@@ -33,7 +44,8 @@ function AppBuilderExtras() {
           },
         ]}
       />
-    </CaseSection>
+      </CaseSection>
+    </>
   );
 }
 

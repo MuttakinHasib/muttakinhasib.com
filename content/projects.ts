@@ -31,6 +31,7 @@ export const projects: Project[] = [
       'Built one-click “Build App” from any canvas selection, using a graph planner that derives entry inputs and final outputs from dependency and reachability rules.',
       'Added a live preview of the resulting app on hover, before anything is created.',
       'Improved canvas rendering by about 20% via zoom-aware image loading (6 resolution tiers) and identity-based memoization.',
+      'Built group connections: drag a whole section or multi-selection onto a node and every member wires into the node’s roomiest compatible input, with type validation and slots added up to the input’s limit.',
       'Engineered reusable canvas components: a config-driven action toolbar used by 45 node types, a resize system used by 30, and a floating results carousel with inertial panning used by 29.',
     ],
     challenges: [
@@ -75,6 +76,10 @@ export const projects: Project[] = [
         body: 'Six resolution tiers mapped to zoom ranges, combined with identity-based memoization of node renders.',
       },
       {
+        title: 'Group connections',
+        body: 'One drag connects a whole group: each member is checked against the target’s supported input types and lands in its own slot, with incompatible handles dimmed while you drag.',
+      },
+      {
         title: 'Platform components',
         body: 'Action toolbar (45 node types), resize system (30), and a floating results carousel with inertial panning (29).',
       },
@@ -86,9 +91,15 @@ export const projects: Project[] = [
         context: 'From zoom-aware image loading and identity-based memoization.',
       },
       {
-        value: '45',
-        label: 'node types share one action toolbar',
-        context: 'Plus 30 on the resize system and 29 on the results carousel.',
+        value: '120 fps',
+        label: 'pan and zoom on an image-heavy workflow',
+        context:
+          'Measured on the live canvas on a 120 Hz display: median frame 8.3 ms, p95 9.3 ms once images are cached. A team result that includes my rendering work.',
+      },
+      {
+        value: '1,567',
+        label: 'commits to the ImagineArt web app',
+        context: 'Feb to Sep 2026, the most of 33 contributors in that period.',
       },
       {
         value: '100M+',

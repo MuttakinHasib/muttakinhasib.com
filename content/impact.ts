@@ -20,7 +20,7 @@ export const impact: ImpactEntry[] = [
     value: '~20%',
     claim: 'faster canvas rendering',
     context:
-      'Zoom-aware image loading across 6 resolution tiers, plus identity-based memoization of node renders.',
+      'Zoom-aware image loading across 6 resolution tiers, plus identity-based memoization of node renders. The live canvas now pans and zooms at 120 fps on a 120 Hz display (median frame 8.3 ms, measured).',
     project: ProjectSlug.APP_BUILDER,
     source: 'ImagineArt Workflows',
     emphasis: Emphasis.LEAD,
@@ -43,9 +43,9 @@ export const impact: ImpactEntry[] = [
     emphasis: Emphasis.SUPPORT,
   },
   {
-    value: '45',
-    claim: 'node types on one action toolbar',
-    context: 'A config-driven component I built; my resize system serves 30 and my results carousel 29.',
+    value: '1,567',
+    claim: 'commits to ImagineArt’s web app in 7 months',
+    context: 'The most of 33 contributors between Feb and Sep 2026, more than twice the next.',
     project: ProjectSlug.APP_BUILDER,
     source: 'ImagineArt',
     emphasis: Emphasis.SUPPORT,
