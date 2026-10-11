@@ -32,7 +32,7 @@ function AppBuilderExtras() {
           },
           {
             title: 'Combine Audio & Video',
-            body: 'The audio/video merger rebuilt as a multi-track timeline inside the node.',
+            body: 'A timeline inside the node: every wired clip gets a lane, with per-track volume and mute, and drags that snap to any clip edge.',
           },
           {
             title: 'Ad Maker',

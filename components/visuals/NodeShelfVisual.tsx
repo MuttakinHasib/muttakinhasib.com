@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { Dots, type Pt, VizFrame } from './primitives';
 import { VaseArt } from './VaseArt';
 
@@ -25,6 +26,7 @@ interface PortLabelProps extends Pt {
   type: PortType;
   label?: string;
   side: 'in' | 'out';
+  connected?: boolean;
 }
 
 interface RingProps extends Pt {
@@ -43,9 +45,17 @@ interface CellSize {
   h: number;
 }
 
-interface WaveformProps extends Pt {
-  w: number;
-  h: number;
+interface CavPort {
+  type: PortType;
+  label: string;
+  connected: boolean;
+}
+
+interface CavClip {
+  label: string;
+  start: number;
+  end: number;
+  variant: 'source' | 'generated';
 }
 
 const CANVAS = '#0f0f0f';
@@ -61,6 +71,30 @@ const TYPE_COLOR: Record<PortType, string> = {
   [PortType.VIDEO]: '#94cc7a',
   [PortType.AUDIO]: '#e9499f',
 };
+
+/** Combine Audio & Video timeline: 32 s fills the lane, as in the node. */
+const VISIBLE_SECONDS = 32;
+const LANE_H = 38;
+const MICRO: CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 10 };
+
+const CAV_PORTS: CavPort[] = [
+  { type: PortType.VIDEO, label: 'Video 1 *', connected: true },
+  { type: PortType.VIDEO, label: 'Video 2', connected: true },
+  { type: PortType.VIDEO, label: 'Video 3', connected: true },
+  { type: PortType.VIDEO, label: 'Video 4', connected: false },
+  { type: PortType.AUDIO, label: 'Audio 1', connected: true },
+  { type: PortType.AUDIO, label: 'Audio 2', connected: true },
+  { type: PortType.AUDIO, label: 'Audio 3', connected: false },
+];
+
+const CAV_VIDEO_CLIPS: CavClip[] = [
+  { label: 'Video 1', start: 0, end: 8, variant: 'generated' },
+  { label: 'Video 2', start: 8, end: 17, variant: 'source' },
+  { label: 'Video 3', start: 17, end: 26, variant: 'generated' },
+];
+
+/** Video track muted, Audio 1 full, Audio 2 lowered. */
+const CAV_VOLUMES = [0, 100, 60];
 
 /** Score zones as the node shows them: below 33 weak, 33–66 mixed, above 66 strong. */
 function zoneColor(value: number): string {
@@ -80,10 +114,11 @@ function Card({ x, y, w, h, name }: CardProps) {
   );
 }
 
-function PortLabel({ x, y, type, label, side }: PortLabelProps) {
+function PortLabel({ x, y, type, label, side, connected }: PortLabelProps) {
   return (
     <g>
       <circle cx={x} cy={y} r={5.5} fill={side === 'out' ? TYPE_COLOR[type] : CANVAS} stroke={TYPE_COLOR[type]} strokeWidth="2" />
+      {connected ? <circle cx={x} cy={y} r={2.5} fill={TYPE_COLOR[type]} /> : null}
       {label ? (
         <text x={side === 'in' ? x - 10 : x + 10} y={y + 4} textAnchor={side === 'in' ? 'end' : 'start'} className="v-kicker" fill={TYPE_COLOR[type]}>
           {label}
@@ -129,19 +164,6 @@ function Chip({ x, y, label, active }: ChipProps) {
       <text x={x + 13} y={y + 16} className="v-kicker" fill={PAPER}>
         {label}
       </text>
-    </g>
-  );
-}
-
-function Waveform({ x, y, w, h }: WaveformProps) {
-  const bars = Math.floor(w / 5);
-  return (
-    <g>
-      {Array.from({ length: bars }, (_, index) => {
-        const amplitude = (Math.sin(index * 0.7) * 0.5 + 0.5) * (Math.cos(index * 0.23) * 0.3 + 0.7);
-        const barH = Math.max(3, amplitude * h);
-        return <rect key={index} x={x + index * 5} y={y + (h - barH) / 2} width={2.5} height={barH} rx={1} fill={TYPE_COLOR[PortType.AUDIO]} opacity={0.85} />;
-      })}
     </g>
   );
 }
@@ -212,62 +234,143 @@ function CreativeAnalyzer({ x, y }: Pt) {
   );
 }
 
-/** Combine Audio & Video: a multi-track timeline inside the node. */
+/** Combine Audio & Video: every wire becomes a clip on a timeline inside the node. */
 function CombineAudioVideo({ x, y }: Pt) {
-  const nx = x + 70;
-  const nw = 470;
-  const laneX = nx + 16;
-  const pps = 14.6;
+  const nx = x + 90;
+  const nw = 480;
+  const top = y + 20;
+  const preview = { x: nx + 12, y: top + 12, w: nw - 24, h: 88 };
+  const chipsY = preview.y + preview.h + 8;
+  const tt = chipsY + 34;
+  const railX = nx + nw - 44;
+  const laneX = nx + 8;
+  const laneW = railX - laneX - 8;
+  const pps = laneW / VISIBLE_SECONDS;
+  const lanes = [tt + 22, tt + 22 + LANE_H, tt + 22 + LANE_H * 2];
+  const tb = lanes[2] + LANE_H;
+  const at = (seconds: number) => laneX + seconds * pps;
+  const playheadX = at(8);
   return (
     <g>
-      <Card x={nx} y={y + 20} w={nw} h={300} name="Combine Audio & Video" />
-      <PortLabel x={nx} y={y + 54} type={PortType.VIDEO} label="Video" side="in" />
-      <PortLabel x={nx} y={y + 82} type={PortType.AUDIO} label="Audio" side="in" />
-      <PortLabel x={nx + nw} y={y + 54} type={PortType.VIDEO} side="out" />
-      <VaseArt x={nx + 14} y={y + 34} w={nw - 28} h={118} variant="generated" />
-      <circle cx={nx + nw / 2} cy={y + 93} r={18} fill="rgba(244,241,232,0.9)" />
-      <path d={`M${nx + nw / 2 - 5} ${y + 84}l14 9-14 9z`} fill={INK} />
-      {[0, 5, 10, 15, 20, 25, 30].map((second) => (
-        <g key={second}>
-          <line x1={laneX + second * pps} y1={y + 164} x2={laneX + second * pps} y2={y + 172} stroke={FOG} />
-          <text x={laneX + second * pps + 3} y={y + 172} className="v-kicker" fill={FOG}>
-            {second === 0 ? '0' : `0:${String(second).padStart(2, '0')}`}
-          </text>
+      <Card x={nx} y={top} w={nw} h={tb - top + 44} name="Combine Audio & Video" />
+      {CAV_PORTS.map((port, index) => (
+        <g key={port.label} opacity={port.connected ? 1 : 0.6}>
+          <PortLabel x={nx} y={top + 28 + index * 22} type={port.type} label={port.label} side="in" connected={port.connected} />
         </g>
       ))}
-      {/* Video lane */}
-      {[
-        { start: 0, end: 5.5, label: 'clip 1' },
-        { start: 6, end: 13, label: 'clip 2' },
-        { start: 14, end: 21, label: 'clip 3' },
-      ].map((clip) => (
-        <g key={clip.label}>
-          <rect
-            x={laneX + clip.start * pps}
-            y={y + 182}
-            width={(clip.end - clip.start) * pps}
-            height={44}
-            rx={6}
-            fill="rgba(148,204,122,0.12)"
-            stroke="rgba(148,204,122,0.6)"
+      <PortLabel x={nx + nw} y={top + 28} type={PortType.VIDEO} side="out" />
+
+      {/* Result preview with player controls */}
+      <rect x={preview.x} y={preview.y} width={preview.w} height={preview.h} rx={6} fill="#232321" />
+      <VaseArt x={preview.x + (preview.w - 150) / 2} y={preview.y} w={150} h={preview.h} variant="generated" />
+      <rect x={preview.x} y={preview.y + preview.h - 22} width={preview.w} height={22} fill="rgba(15,15,15,0.55)" />
+      <path d={`M${preview.x + 10} ${preview.y + preview.h - 16}l8 5-8 5z`} fill={PAPER} />
+      <text x={preview.x + 26} y={preview.y + preview.h - 7} style={MICRO} fill={PAPER}>
+        0:00 / 0:26
+      </text>
+      <rect x={preview.x + 96} y={preview.y + preview.h - 12} width={preview.w - 110} height={2} rx={1} fill="rgba(244,241,232,0.3)" />
+
+      {/* Connected inputs as chips */}
+      <circle cx={nx + 25} cy={chipsY + 13} r={12} fill="none" stroke={STROKE} />
+      <path d={`M${nx + 20} ${chipsY + 13}h10M${nx + 25} ${chipsY + 8}v10`} stroke={FOG} strokeWidth="1.5" />
+      {[0, 1, 2].map((index) => (
+        <g key={index}>
+          <VaseArt x={nx + 46 + index * 32} y={chipsY} w={26} h={26} variant={index === 1 ? 'source' : 'generated'} />
+          <circle cx={nx + 59 + index * 32} cy={chipsY + 13} r={6} fill="rgba(15,15,15,0.6)" />
+          <path d={`M${nx + 57 + index * 32} ${chipsY + 10}l5 3-5 3z`} fill={PAPER} />
+        </g>
+      ))}
+      {[0, 1].map((index) => (
+        <g key={index}>
+          <rect x={nx + 142 + index * 32} y={chipsY} width={26} height={26} rx={6} fill="#262624" />
+          {[4, 9, 6, 10, 5].map((barH, bar) => (
+            <rect key={bar} x={nx + 148 + index * 32 + bar * 3.2} y={chipsY + 13 - barH / 2} width={1.6} height={barH} rx={0.8} fill={FOG} />
+          ))}
+        </g>
+      ))}
+
+      {/* Timeline: ruler, one video lane, one lane per audio clip */}
+      <rect x={nx + 1} y={tt} width={nw - 2} height={tb - tt} fill="#151514" />
+      {Array.from({ length: VISIBLE_SECONDS * 2 + 1 }, (_, tick) => {
+        const seconds = tick / 2;
+        const major = seconds % 4 === 0;
+        return (
+          <line
+            key={tick}
+            x1={at(seconds)}
+            y1={tt + 14}
+            x2={at(seconds)}
+            y2={tt + (major ? 20 : 17)}
+            stroke={major ? FOG : '#3a3a37'}
           />
-          <VaseArt x={laneX + clip.start * pps + 5} y={y + 187} w={34} h={34} variant="generated" />
-          <text x={laneX + clip.start * pps + 45} y={y + 208} className="v-kicker" fill={TYPE_COLOR[PortType.VIDEO]}>
+        );
+      })}
+      {[0, 4, 8, 12, 16, 20, 24, 28].map((seconds) => (
+        <text key={seconds} x={at(seconds)} y={tt + 10} textAnchor={seconds === 0 ? 'start' : 'middle'} style={MICRO} fill={FOG}>
+          {seconds === 0 ? '0' : `0:${String(seconds).padStart(2, '0')}`}
+        </text>
+      ))}
+      {[tt + 22, ...lanes.map((laneY) => laneY + LANE_H)].map((lineY) => (
+        <line key={lineY} x1={nx + 1} y1={lineY} x2={nx + nw - 1} y2={lineY} stroke="#2a2a28" />
+      ))}
+
+      {CAV_VIDEO_CLIPS.map((clip) => (
+        <g key={clip.label} opacity={0.6}>
+          <rect x={at(clip.start)} y={lanes[0] + 5} width={(clip.end - clip.start) * pps - 1} height={LANE_H - 10} rx={6} fill="rgba(148,204,122,0.1)" stroke="rgba(148,204,122,0.6)" />
+          <VaseArt x={at(clip.start) + 4} y={lanes[0] + 9} w={20} h={20} variant={clip.variant} />
+          <text x={at(clip.start) + 30} y={lanes[0] + 23} className="v-kicker" fill={TYPE_COLOR[PortType.VIDEO]}>
             {clip.label}
           </text>
         </g>
       ))}
-      {/* Audio lane */}
-      <rect x={laneX + 1 * pps} y={y + 236} width={19 * pps} height={36} rx={6} fill="rgba(233,73,159,0.1)" stroke="rgba(233,73,159,0.6)" />
-      <Waveform x={laneX + 1 * pps + 8} y={y + 242} w={19 * pps - 16} h={24} />
-      <path d={`M${nx + nw - 34} ${y + 200}h4l5-5v14l-5-5h-4z`} fill={FOG} />
-      <path d={`M${nx + nw - 34} ${y + 254}h4l5-5v14l-5-5h-4z`} fill={FOG} />
-      {/* Playhead */}
-      <line x1={laneX + 9 * pps} y1={y + 160} x2={laneX + 9 * pps} y2={y + 280} stroke={PAPER} strokeWidth="1.5" />
-      <path d={`M${laneX + 9 * pps - 5} ${y + 156}h10l-5 7z`} fill={PAPER} />
-      <text x={laneX} y={y + 302} className="v-kicker" fill={FOG}>
-        drag to move or trim, snaps to 0.1s and to neighbours
+      <rect x={at(0)} y={lanes[1] + 5} width={24 * pps} height={LANE_H - 10} rx={6} fill="rgba(233,73,159,0.1)" stroke="rgba(233,73,159,0.6)" />
+      <text x={at(0) + 12} y={lanes[1] + 23} className="v-kicker" fill={TYPE_COLOR[PortType.AUDIO]}>
+        Audio 1
       </text>
+      {/* Audio 2 mid-drag: raised, snapped to the 0:08 edge between Video 1 and Video 2 */}
+      <rect x={playheadX} y={lanes[2] + 5} width={railX - playheadX + 12} height={LANE_H - 10} rx={6} fill="#2a1520" stroke={TYPE_COLOR[PortType.AUDIO]} strokeWidth="1.5" />
+      <text x={playheadX + 12} y={lanes[2] + 23} className="v-kicker" fill={TYPE_COLOR[PortType.AUDIO]}>
+        Audio 2
+      </text>
+      {/* Lane right-edge fade, then the volume rail */}
+      {[0, 1, 2, 3, 4, 5].map((step) => (
+        <rect key={step} x={railX - 24 + step * 4} y={tt + 22} width={4} height={tb - tt - 22} fill="#151514" opacity={0.15 + step * 0.17} />
+      ))}
+      <rect x={railX} y={tt} width={nx + nw - 1 - railX} height={tb - tt} fill="#151514" />
+      {lanes.map((laneY, index) => {
+        const volume = CAV_VOLUMES[index];
+        const sliderH = LANE_H - 12;
+        return (
+          <g key={laneY}>
+            <path d={`M${railX + 4} ${laneY + 16}h3l4-4v12l-4-4h-3z`} fill={FOG} />
+            {volume === 0 ? (
+              <path d={`M${railX + 14} ${laneY + 16}l5 5M${railX + 19} ${laneY + 16}l-5 5`} stroke={FOG} strokeWidth="1.3" />
+            ) : (
+              <path d={`M${railX + 14} ${laneY + 15}q3 3 0 6`} fill="none" stroke={FOG} strokeWidth="1.3" />
+            )}
+            <rect x={railX + 30} y={laneY + 6} width={3} height={sliderH} rx={1.5} fill="#3a3a37" />
+            <rect x={railX + 30} y={laneY + 6 + sliderH * (1 - volume / 100)} width={3} height={(sliderH * volume) / 100} rx={1.5} fill={PAPER} />
+          </g>
+        );
+      })}
+      {/* Dashed playhead: the clip is aligned to another clip's edge */}
+      <line x1={playheadX} y1={tt + 18} x2={playheadX} y2={tb} stroke={PAPER} strokeDasharray="3 3" />
+      <rect x={playheadX - 19} y={tt} width={38} height={18} rx={4} fill={PAPER} />
+      <text x={playheadX} y={tt + 13} textAnchor="middle" style={MICRO} fill={INK}>
+        0:08
+      </text>
+      <path
+        transform={`translate(${playheadX + 96} ${lanes[2] + 14})`}
+        d="M0 0L0 22L6 16.5L10.5 26L14.5 24.2L10 14.8L17.5 14.8Z"
+        fill={PAPER}
+        stroke={INK}
+        strokeWidth="1.4"
+      />
+
+      {/* Lane scrollbar and run button */}
+      <rect x={laneX} y={tb + 5} width={laneW * 0.78} height={4} rx={2} fill="#3a3a37" />
+      <circle cx={nx + nw - 26} cy={tb + 24} r={13} fill={PAPER} />
+      <path d={`M${nx + nw - 26} ${tb + 30}v-12M${nx + nw - 31} ${tb + 23}l5-5 5 5`} fill="none" stroke={INK} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </g>
   );
 }
@@ -368,11 +471,11 @@ function Wide() {
 function Narrow() {
   return (
     <>
-      <Dots width={600} height={1400} color="rgba(244,241,232,0.07)" background={CANVAS} />
+      <Dots width={600} height={1450} color="rgba(244,241,232,0.07)" background={CANVAS} />
       <CreativeAnalyzer x={20} y={20} />
       <CombineAudioVideo x={0} y={370} />
-      <AdMaker x={70} y={720} />
-      <Storyboard x={10} y={1060} />
+      <AdMaker x={70} y={770} />
+      <Storyboard x={10} y={1110} />
     </>
   );
 }
@@ -380,10 +483,10 @@ function Narrow() {
 export function NodeShelfVisual() {
   return (
     <VizFrame
-      label="Reconstructions of four more nodes on the same canvas. Creative Analyzer scores an imported creative with an ACE score ring, a red, yellow, and green zone bar, KPI rings for attention, branding, ease, and emotion, an app-type selector, and PDF, XLSX, and CSV export. Combine Audio and Video shows a preview above a multi-track timeline with three green video clips, a pink audio clip with a waveform, and a playhead. Ad Maker takes product, avatar, and reference inputs with UGC, Hook, and Scene modes. Storyboard turns a prompt and image into a three by three grid of frames."
+      label="Reconstructions of four more nodes on the same canvas. Creative Analyzer scores an imported creative with an ACE score ring, a red, yellow, and green zone bar, KPI rings for attention, branding, ease, and emotion, an app-type selector, and PDF, XLSX, and CSV export. Combine Audio and Video shows the result above a timeline: three green video clips packed in one lane, two pink audio clips in lanes of their own, a volume rail with the video track muted, and Audio 2 mid-drag, snapped to the 0:08 edge with a dashed playhead. Ad Maker takes product, avatar, and reference inputs with UGC, Hook, and Scene modes. Storyboard turns a prompt and image into a three by three grid of frames."
       wide={<Wide />}
       narrow={<Narrow />}
-      narrowBox="0 0 600 1400"
+      narrowBox="0 0 600 1450"
     />
   );
 }
