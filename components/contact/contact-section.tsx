@@ -1,6 +1,6 @@
 import { cacheLife } from 'next/cache';
 import { profile } from '@/content/profile';
-import { CopyEmailButton } from './CopyEmailButton';
+import { CopyEmailButton } from './copy-email-button';
 
 async function buildYear(): Promise<number> {
   'use cache';

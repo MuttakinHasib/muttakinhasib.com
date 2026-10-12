@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ContactSection } from '@/components/contact/ContactSection';
-import { PageTransition } from '@/components/site/PageTransition';
+import { ContactSection } from '@/components/contact/contact-section';
+import { PageTransition } from '@/components/site/page-transition';
 import { getCapability } from '@/content/capabilities';
 import { otherWork } from '@/content/other-work';
 import { projects } from '@/content/projects';

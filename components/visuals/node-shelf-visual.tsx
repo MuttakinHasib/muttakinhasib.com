@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
-import { Dots, type Pt, VizFrame } from './primitives';
-import { VaseArt } from './VaseArt';
+import { Cursor, Dots, wirePath, type Pt, VizFrame } from './primitives';
+import { VIZ_CANVAS as CANVAS, VIZ_FOG as FOG, VIZ_INK as INK, VIZ_NODE as NODE, VIZ_PAPER as PAPER, VIZ_STROKE as STROKE, VIZ_TYPE_COLOR } from './palette';
+import { VaseArt } from './vase-art';
 
 /**
  * Four more nodes from the same canvas, reconstructed after the live product:
@@ -57,19 +58,7 @@ interface CavClip {
   variant: 'source' | 'generated';
 }
 
-const CANVAS = '#0f0f0f';
-const NODE = '#1b1b1a';
-const STROKE = '#30302c';
-const PAPER = '#f4f1e8';
-const FOG = '#a9a79c';
-const INK = '#171815';
-
-const TYPE_COLOR: Record<PortType, string> = {
-  [PortType.TEXT]: '#8ab4ff',
-  [PortType.IMAGE]: '#e6a03a',
-  [PortType.VIDEO]: '#94cc7a',
-  [PortType.AUDIO]: '#e9499f',
-};
+const TYPE_COLOR: Record<PortType, string> = VIZ_TYPE_COLOR;
 
 /** Combine Audio & Video timeline: 32 s fills the lane, as in the node. */
 const VISIBLE_SECONDS = 32;
@@ -178,7 +167,7 @@ function CreativeAnalyzer({ x, y }: Pt) {
       <text x={x + 14} y={y + 220} className="v-kicker" fill={FOG}>
         + Add more
       </text>
-      <path d={`M${x + iw} ${y + 150}C${x + iw + 22} ${y + 150} ${ax - 22} ${y + 60} ${ax} ${y + 60}`} fill="none" stroke={TYPE_COLOR[PortType.IMAGE]} strokeWidth="2" />
+      <path d={wirePath({ x: x + iw, y: y + 150 }, { x: ax, y: y + 60 }, 22)} fill="none" stroke={TYPE_COLOR[PortType.IMAGE]} strokeWidth="2" />
       <PortLabel x={x + iw} y={y + 150} type={PortType.IMAGE} side="out" />
 
       <Card x={ax} y={y + 20} w={aw} h={300} name="Creative Analyzer" />
@@ -339,13 +328,7 @@ function CombineAudioVideo({ x, y }: Pt) {
       <text x={playheadX} y={tt + 13} textAnchor="middle" style={MICRO} fill={INK}>
         0:08
       </text>
-      <path
-        transform={`translate(${playheadX + 96} ${lanes[2] + 14})`}
-        d="M0 0L0 22L6 16.5L10.5 26L14.5 24.2L10 14.8L17.5 14.8Z"
-        fill={PAPER}
-        stroke={INK}
-        strokeWidth="1.4"
-      />
+      <Cursor x={playheadX + 96} y={lanes[2] + 14} miter />
 
       {/* Lane scrollbar and run button */}
       <rect x={laneX} y={tb + 5} width={laneW * 0.78} height={4} rx={2} fill="#3a3a37" />

@@ -23,9 +23,9 @@ import {
 import '@xyflow/react/dist/base.css';
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useElementWidth } from '@/lib/use-element-width';
-import type { EditorGlyph } from '../visuals/editor-icons';
+import { HtmlIcon as Icon, type EditorGlyph } from '../visuals/editor-icons';
 import { Lucide } from '../visuals/lucide-icons';
-import { DemoFrame } from './DemoFrame';
+import { DemoFrame } from './demo-frame';
 import {
   autoLayout,
   createsCycle,
@@ -78,11 +78,6 @@ interface TaskEdgeData extends Record<string, unknown> {
 
 type TaskEdge = Edge<TaskEdgeData, 'task'>;
 
-interface IconProps {
-  glyph: EditorGlyph;
-  className?: string;
-}
-
 interface Graph {
   tasks: Task[];
   edges: DagEdge[];
@@ -120,7 +115,9 @@ const wideLayout: LayoutOptions = { nodeWidth: NODE_WIDTH, nodeHeight: NODE_HEIG
 const narrowLayout: LayoutOptions = { nodeWidth: 148, nodeHeight: 52, gapMain: 44, gapCross: 16, vertical: true };
 /** Below this canvas width the full cards would have to zoom out past legibility. */
 const NARROW_CANVAS = 720;
-const FIT = { padding: 0.14 } as const;
+const wideFit = { padding: 0.14 } as const;
+/** Tight sides keep the zoom up so the + buttons stay finger-sized; the bottom margin clears the attribution. */
+const narrowFit = { padding: { top: '20px', right: '16px', bottom: '48px', left: '16px' } } as const;
 const MOVE_MS = 420;
 const SAVE_MS = 900;
 
@@ -130,25 +127,6 @@ function planOf({ tasks, edges }: Graph): ExecutionPlan {
   return executionPlan(
     tasks.map((task) => task.id),
     edges,
-  );
-}
-
-function Icon({ glyph, className }: IconProps) {
-  return (
-    <svg
-      className={className}
-      viewBox={`0 0 ${glyph.box} ${glyph.box}`}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={glyph.strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {glyph.paths.map((d) => (
-        <path key={d} d={d} />
-      ))}
-    </svg>
   );
 }
 
@@ -226,6 +204,7 @@ export default function ExecutionOrderDemo() {
   const canvasWidth = useElementWidth(canvasRef);
   const vertical = canvasWidth > 0 && canvasWidth < NARROW_CANVAS;
   const options = vertical ? narrowLayout : wideLayout;
+  const fit = vertical ? narrowFit : wideFit;
   const [graph, setGraph] = useState<Graph>({ tasks: starterTasks, edges: starterEdges });
   const [nodes, setNodes] = useState<TaskNode[]>(() => placeNodes({ tasks: starterTasks, edges: starterEdges }, wideLayout));
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
@@ -282,11 +261,11 @@ export default function ExecutionOrderDemo() {
           }),
         );
         if (t < 1) frame.current = window.requestAnimationFrame(step);
-        else flow?.fitView({ ...FIT, duration: reduce ? 0 : 300 });
+        else flow?.fitView({ ...fit, duration: reduce ? 0 : 300 });
       };
       frame.current = window.requestAnimationFrame(step);
     },
-    [options, flow],
+    [options, fit, flow],
   );
 
   // Lay out again when the screen switches between wide and narrow, or the canvas first reports in.
@@ -451,7 +430,7 @@ export default function ExecutionOrderDemo() {
       note="A simplified reconstruction for this portfolio. iGOT.ai Studio’s engine syncs these edges with the backend; here the order is computed in the browser."
     >
       <div className="ag-layout">
-        <div className="ag-canvas" ref={canvasRef}>
+        <div className="ag-canvas" ref={canvasRef} data-compact={vertical || undefined}>
           <div className="ag-toolbar">
             <button type="button" className="ag-chip" onClick={tidy}>
               <Icon glyph={Lucide.LAYOUT_GRID} className="ag-icon" />
@@ -473,9 +452,10 @@ export default function ExecutionOrderDemo() {
             isValidConnection={isValidConnection}
             onPaneClick={() => setSelectedEdge(null)}
             onInit={setFlow}
+            attributionPosition="bottom-left"
             connectionLineStyle={{ stroke: '#f4f1e8', strokeWidth: 2, strokeDasharray: '6 6' }}
             fitView
-            fitViewOptions={FIT}
+            fitViewOptions={fit}
             panOnDrag={false}
             zoomOnScroll={false}
             zoomOnDoubleClick={false}

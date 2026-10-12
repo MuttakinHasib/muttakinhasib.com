@@ -1,40 +1,45 @@
 import Link from 'next/link';
 import { type JSX, ViewTransition } from 'react';
-import { projects } from '@/content/projects';
-import { type Metric, type Project, ProjectSlug } from '@/content/types';
-import { ProjectVisual } from '@/components/visuals/ProjectVisual';
+import { MetricList } from '@/components/ui/metric-list';
+import { ProjectVisual } from '@/components/visuals/project-visual';
+import { type Project, ProjectSlug, isDarkTone } from '@/content/types';
 import { caseStudyHref } from '@/lib/site';
+import { projectTitleMorphName, projectVisualMorphName } from '@/components/site/morph-names';
 
-interface FeatureProps {
-  project: Project;
-}
+/**
+ * The homepage feature compositions. One module, one interface
+ * (<FeatureLayout project />), five variants in the implementation — the grid
+ * choreography lives here so the shared pieces below stay coherent.
+ */
 
-interface MetricListProps {
-  metrics: Metric[];
-  className?: string;
-}
-
-/** Each project gets its own composition; the shared pieces below keep the system coherent. */
-const FeatureLayout = {
+export const FeatureVariant = {
   SPLIT_DARK: 'split-dark',
   VISUAL_FIRST: 'visual-first',
   STAGE: 'stage',
   SYSTEM: 'system',
   BUILT_LED: 'built-led',
 } as const;
-type FeatureLayout = (typeof FeatureLayout)[keyof typeof FeatureLayout];
+export type FeatureVariant = (typeof FeatureVariant)[keyof typeof FeatureVariant];
 
-const layoutBySlug: Record<ProjectSlug, FeatureLayout> = {
-  [ProjectSlug.APP_BUILDER]: FeatureLayout.SPLIT_DARK,
-  [ProjectSlug.GENERATIVE_FILL]: FeatureLayout.VISUAL_FIRST,
-  [ProjectSlug.COCODING]: FeatureLayout.STAGE,
-  [ProjectSlug.HASHMATO]: FeatureLayout.SYSTEM,
-  [ProjectSlug.IGOT]: FeatureLayout.BUILT_LED,
-};
+/** Which composition each project gets. */
+export function variantForSlug(slug: ProjectSlug): FeatureVariant {
+  const bySlug: Record<ProjectSlug, FeatureVariant> = {
+    [ProjectSlug.APP_BUILDER]: FeatureVariant.SPLIT_DARK,
+    [ProjectSlug.GENERATIVE_FILL]: FeatureVariant.VISUAL_FIRST,
+    [ProjectSlug.COCODING]: FeatureVariant.STAGE,
+    [ProjectSlug.HASHMATO]: FeatureVariant.SYSTEM,
+    [ProjectSlug.IGOT]: FeatureVariant.BUILT_LED,
+  };
+  return bySlug[slug];
+}
 
-export function ProjectTitle({ project }: FeatureProps) {
+interface ProjectProps {
+  project: Project;
+}
+
+function ProjectTitle({ project }: ProjectProps) {
   return (
-    <ViewTransition name={`project-title-${project.slug}`} share="project-morph" default="none">
+    <ViewTransition name={projectTitleMorphName(project.slug)} share="project-morph" default="none">
       <h3 className="type-display feature-title">
         <Link
           href={caseStudyHref(project.slug)}
@@ -49,7 +54,7 @@ export function ProjectTitle({ project }: FeatureProps) {
   );
 }
 
-function FeatureMeta({ project }: FeatureProps) {
+function FeatureMeta({ project }: ProjectProps) {
   return (
     <p className="feature-meta type-small">
       <span>{project.company}</span>
@@ -59,14 +64,15 @@ function FeatureMeta({ project }: FeatureProps) {
   );
 }
 
-function FeatureVisual({ project }: FeatureProps) {
+function FeatureVisual({ project }: ProjectProps) {
   return (
-    <ViewTransition name={`project-visual-${project.slug}`} share="project-morph" default="none">
+    <ViewTransition name={projectVisualMorphName(project.slug)} share="project-morph" default="none">
       <Link
         href={caseStudyHref(project.slug)}
         transitionTypes={['nav-forward']}
         className="feature-visual"
-        aria-label={`Open the ${project.shortTitle} case study`}
+        // A pointer shortcut: the title and the case study link already reach this page.
+        aria-hidden="true"
         tabIndex={-1}
       >
         <ProjectVisual slug={project.slug} />
@@ -75,7 +81,7 @@ function FeatureVisual({ project }: FeatureProps) {
   );
 }
 
-function Highlights({ project }: FeatureProps) {
+function Highlights({ project }: ProjectProps) {
   return (
     <ul className="feature-highlights">
       {project.highlights.map((highlight) => (
@@ -85,23 +91,7 @@ function Highlights({ project }: FeatureProps) {
   );
 }
 
-export function MetricList({ metrics, className }: MetricListProps) {
-  return (
-    <dl className={`feature-metrics ${className ?? ''}`}>
-      {metrics.map((metric) => (
-        <div key={metric.label} className="feature-metric">
-          <dt>
-            <span className="type-figure feature-metric-value">{metric.value}</span>
-            <span className="feature-metric-label">{metric.label}</span>
-          </dt>
-          <dd className="type-small feature-metric-context">{metric.context}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-function CaseStudyLink({ project }: FeatureProps) {
+function CaseStudyLink({ project }: ProjectProps) {
   return (
     <Link href={caseStudyHref(project.slug)} transitionTypes={['nav-forward']} className="wire-link">
       Read the case study
@@ -111,9 +101,14 @@ function CaseStudyLink({ project }: FeatureProps) {
   );
 }
 
-function SplitDark({ project }: FeatureProps) {
+function Summary({ project, dark }: ProjectProps & { dark: boolean }) {
+  return <p className={`type-lead ${dark ? 'text-paper' : ''}`}>{project.summary}</p>;
+}
+
+function SplitDark({ project }: ProjectProps): JSX.Element {
+  const dark = isDarkTone(project.tone);
   return (
-    <article id={project.slug} data-theme="dark" data-tone={project.tone} className="feature feature-split-dark">
+    <article id={project.slug} data-theme={dark ? 'dark' : undefined} data-tone={project.tone} className="feature feature-split-dark">
       <div className="shell grid-12 gap-y-10 lg:grid-rows-[auto_1fr]">
         <div className="col-span-4 md:col-span-8 lg:col-span-4 lg:row-start-1 lg:pt-4">
           <ProjectTitle project={project} />
@@ -123,7 +118,7 @@ function SplitDark({ project }: FeatureProps) {
           <FeatureVisual project={project} />
         </div>
         <div className="col-span-4 md:col-span-8 lg:col-span-4 lg:row-start-2">
-          <p className="type-lead text-paper">{project.summary}</p>
+          <Summary project={project} dark={dark} />
           <Highlights project={project} />
           <MetricList metrics={project.outcomes.slice(0, 2)} className="mt-10" />
           <div className="mt-8">
@@ -135,7 +130,7 @@ function SplitDark({ project }: FeatureProps) {
   );
 }
 
-function VisualFirst({ project }: FeatureProps) {
+function VisualFirst({ project }: ProjectProps): JSX.Element {
   return (
     <article id={project.slug} data-tone={project.tone} className="feature feature-visual-first">
       <div className="shell grid-12 gap-y-10 lg:grid-rows-[1fr_auto_auto_1fr]">
@@ -147,7 +142,7 @@ function VisualFirst({ project }: FeatureProps) {
           <FeatureVisual project={project} />
         </div>
         <div className="col-span-4 md:col-span-8 lg:col-span-4 lg:col-start-9 lg:row-start-3">
-          <p className="type-lead">{project.summary}</p>
+          <Summary project={project} dark={false} />
           <Highlights project={project} />
           <div className="mt-8">
             <CaseStudyLink project={project} />
@@ -158,9 +153,10 @@ function VisualFirst({ project }: FeatureProps) {
   );
 }
 
-function Stage({ project }: FeatureProps) {
+function Stage({ project }: ProjectProps): JSX.Element {
+  const dark = isDarkTone(project.tone);
   return (
-    <article id={project.slug} data-theme="dark" data-tone={project.tone} className="feature feature-stage">
+    <article id={project.slug} data-theme={dark ? 'dark' : undefined} data-tone={project.tone} className="feature feature-stage">
       <div className="shell">
         <div className="grid-12 gap-y-6">
           <div className="col-span-4 md:col-span-12 lg:col-span-9">
@@ -172,7 +168,7 @@ function Stage({ project }: FeatureProps) {
           <FeatureVisual project={project} />
         </div>
         <div className="grid-12 mt-10 gap-y-8 lg:mt-14">
-          <p className="col-span-4 type-lead text-paper md:col-span-6 lg:col-span-4">{project.summary}</p>
+          <Summary project={project} dark={dark} />
           <div className="col-span-4 md:col-span-6 lg:col-span-4">
             <Highlights project={project} />
           </div>
@@ -188,7 +184,7 @@ function Stage({ project }: FeatureProps) {
   );
 }
 
-function SystemLayout({ project }: FeatureProps) {
+function SystemLayout({ project }: ProjectProps): JSX.Element {
   return (
     <article id={project.slug} data-tone={project.tone} className="feature feature-system">
       <div className="shell grid-12 gap-y-10 lg:grid-rows-[auto_1fr]">
@@ -201,7 +197,7 @@ function SystemLayout({ project }: FeatureProps) {
           <MetricList metrics={project.outcomes.slice(0, 3)} className="feature-metrics-row mt-10" />
         </div>
         <div className="col-span-4 md:col-span-8 lg:col-span-4 lg:row-start-2">
-          <p className="type-lead">{project.summary}</p>
+          <Summary project={project} dark={false} />
           <Highlights project={project} />
           <div className="mt-8">
             <CaseStudyLink project={project} />
@@ -212,7 +208,23 @@ function SystemLayout({ project }: FeatureProps) {
   );
 }
 
-function BuiltLed({ project }: FeatureProps) {
+function BuiltSection({ label, items, led }: { label: string; items: string[]; led?: boolean }) {
+  return (
+    <section aria-label={label}>
+      <h4 className="feature-split-label">
+        <span className="feature-split-port" data-led={led || undefined} aria-hidden="true" />
+        {label}
+      </h4>
+      <ul className="feature-highlights mt-3">
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function BuiltLed({ project }: ProjectProps): JSX.Element {
   return (
     <article id={project.slug} data-tone={project.tone} className="feature feature-built-led">
       <div className="shell">
@@ -228,26 +240,8 @@ function BuiltLed({ project }: FeatureProps) {
             <FeatureVisual project={project} />
           </div>
           <div className="col-span-4 grid gap-8 md:col-span-12 md:grid-cols-2 lg:col-span-5 lg:grid-cols-1 lg:content-start">
-            <section aria-label="What I built">
-              <h4 className="feature-split-label">
-                <span className="feature-split-port" aria-hidden="true" />I built
-              </h4>
-              <ul className="feature-highlights mt-3">
-                {project.built.slice(0, 2).map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </section>
-            <section aria-label="What I led">
-              <h4 className="feature-split-label">
-                <span className="feature-split-port" data-led aria-hidden="true" />I led
-              </h4>
-              <ul className="feature-highlights mt-3">
-                {(project.led ?? []).slice(0, 2).map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </section>
+            <BuiltSection label="I built" items={project.built.slice(0, 2)} />
+            <BuiltSection label="I led" items={(project.led ?? []).slice(0, 2)} led />
             <div>
               <CaseStudyLink project={project} />
             </div>
@@ -258,30 +252,15 @@ function BuiltLed({ project }: FeatureProps) {
   );
 }
 
-const renderers: Record<FeatureLayout, (props: FeatureProps) => JSX.Element> = {
-  [FeatureLayout.SPLIT_DARK]: SplitDark,
-  [FeatureLayout.VISUAL_FIRST]: VisualFirst,
-  [FeatureLayout.STAGE]: Stage,
-  [FeatureLayout.SYSTEM]: SystemLayout,
-  [FeatureLayout.BUILT_LED]: BuiltLed,
+const variants: Record<FeatureVariant, (props: ProjectProps) => JSX.Element> = {
+  [FeatureVariant.SPLIT_DARK]: SplitDark,
+  [FeatureVariant.VISUAL_FIRST]: VisualFirst,
+  [FeatureVariant.STAGE]: Stage,
+  [FeatureVariant.SYSTEM]: SystemLayout,
+  [FeatureVariant.BUILT_LED]: BuiltLed,
 };
 
-export function SelectedWork() {
-  return (
-    <section id="work" aria-labelledby="work-title" className="selected-work">
-      <div className="shell grid-12 gap-y-6 pb-16 pt-24 lg:pb-24 lg:pt-36">
-        <h2 id="work-title" className="type-display col-span-4 md:col-span-7">
-          Selected work
-        </h2>
-        <p className="type-lead col-span-4 max-w-[38ch] text-graphite md:col-span-5 md:self-end">
-          Five systems where the hard part sits below the interface, and the interface still has to make it
-          feel simple.
-        </p>
-      </div>
-      {projects.map((project) => {
-        const Feature = renderers[layoutBySlug[project.slug]];
-        return <Feature key={project.slug} project={project} />;
-      })}
-    </section>
-  );
+export function FeatureLayout({ project, variant }: ProjectProps & { variant: FeatureVariant }) {
+  const Feature = variants[variant];
+  return <Feature project={project} />;
 }

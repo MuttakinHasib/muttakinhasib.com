@@ -1,9 +1,9 @@
 import type { JSX } from 'react';
-import { GroupConnectionVisual } from '@/components/visuals/GroupConnectionVisual';
-import { NodeShelfVisual } from '@/components/visuals/NodeShelfVisual';
+import { GroupConnectionVisual } from '@/components/visuals/group-connection-visual';
+import { NodeShelfVisual } from '@/components/visuals/node-shelf-visual';
 import { ProjectSlug } from '@/content/types';
-import { CaseSection, NoteList } from './CaseSection';
-import { SchemaExplorerDemo } from './CaseStudyDemo';
+import { CaseSection, NoteList } from './case-section';
+import { SchemaExplorerDemo } from './case-study-demo';
 
 interface CaseStudyExtrasProps {
   slug: ProjectSlug;

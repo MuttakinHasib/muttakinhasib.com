@@ -16,9 +16,9 @@ import {
 import '@xyflow/react/dist/base.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useElementWidth } from '@/lib/use-element-width';
-import type { EditorGlyph } from '../visuals/editor-icons';
+import { HtmlIcon as Icon } from '../visuals/editor-icons';
 import { Lucide } from '../visuals/lucide-icons';
-import { DemoFrame } from './DemoFrame';
+import { DemoFrame } from './demo-frame';
 import {
   ColumnKey,
   foreignKeys,
@@ -58,35 +58,11 @@ interface TableData extends Record<string, unknown> {
 
 type TableNode = Node<TableData, 'table'>;
 
-interface IconProps {
-  glyph: EditorGlyph;
-  className?: string;
-}
-
 const LAYOUT: LayoutOptions = { nodeWidth: 210, headerHeight: 44, rowHeight: 26, gapX: 80, gapY: 36 };
 const COMPACT_LAYOUT: LayoutOptions = { nodeWidth: 164, headerHeight: 44, rowHeight: 0, gapX: 40, gapY: 16, vertical: true };
 const NARROW_CANVAS = 640;
 /** Leaves room at the top for the floating search bar, so no table sits under it. */
 const FIT = { padding: { top: '72px', right: '6%', bottom: '6%', left: '6%' } } as const;
-
-function Icon({ glyph, className }: IconProps) {
-  return (
-    <svg
-      className={className}
-      viewBox={`0 0 ${glyph.box} ${glyph.box}`}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={glyph.strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {glyph.paths.map((d) => (
-        <path key={d} d={d} />
-      ))}
-    </svg>
-  );
-}
 
 function TableNodeView({ data, selected }: NodeProps<TableNode>) {
   const { table, role, matches, compact } = data;
@@ -150,6 +126,7 @@ export default function SchemaDemo() {
   const [query, setQuery] = useState('');
   const [flow, setFlow] = useState<ReactFlowInstance<TableNode> | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const fitFrame = useRef(0);
   const canvasWidth = useElementWidth(canvasRef);
   const compact = canvasWidth > 0 && canvasWidth < NARROW_CANVAS;
 
@@ -165,6 +142,14 @@ export default function SchemaDemo() {
     const frame = window.requestAnimationFrame(() => flow?.fitView(FIT));
     return () => window.cancelAnimationFrame(frame);
   }, [arranged, flow]);
+
+  // Navigating away must not leave Organize's refit running on a dead instance.
+  useEffect(
+    () => () => {
+      window.cancelAnimationFrame(fitFrame.current);
+    },
+    [],
+  );
 
   const keys = useMemo(() => foreignKeys(todoSchema), []);
   const related = useMemo(() => (focus ? relationships(todoSchema, focus) : null), [focus]);
@@ -234,7 +219,8 @@ export default function SchemaDemo() {
 
   const organize = () => {
     setNodes(initialNodes(compact));
-    window.requestAnimationFrame(() => flow?.fitView({ ...FIT, duration: 300 }));
+    window.cancelAnimationFrame(fitFrame.current);
+    fitFrame.current = window.requestAnimationFrame(() => flow?.fitView({ ...FIT, duration: 300 }));
   };
 
   const table = focus ? todoSchema.find((candidate) => candidate.name === focus) : undefined;

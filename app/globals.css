@@ -349,20 +349,21 @@
     margin-bottom: -0.06em;
   }
 
+  /* Beats come from components/graph/intro.ts — that module owns the timeline. */
   .intro-line > span {
     display: block;
     animation: rise 900ms var(--ease-out) both;
-    animation-delay: calc(80ms + var(--i, 0) * 110ms);
+    animation-delay: var(--intro-delay, 80ms);
   }
 
   .intro-fade {
     animation: appear 700ms var(--ease-out) both;
-    animation-delay: var(--delay, 400ms);
+    animation-delay: var(--delay, 300ms);
   }
 
   .intro-node {
     animation: node-in 600ms var(--ease-out) both;
-    animation-delay: var(--delay, 900ms);
+    animation-delay: var(--delay, 950ms);
   }
 
   :root[data-intro="done"] .intro-line > span,
@@ -558,6 +559,7 @@
   }
 
   .graph-node-meta {
+    order: -1;
     display: flex;
     justify-content: space-between;
     gap: 0.75rem;
@@ -1781,12 +1783,6 @@
     padding-bottom: clamp(3rem, 2rem + 4vw, 6rem);
   }
 
-  .cs-skeleton {
-    height: clamp(24rem, 60vh, 40rem);
-    border-radius: 12px;
-    background: var(--color-surface);
-  }
-
   .cs-breadcrumb {
     display: flex;
     flex-wrap: wrap;
@@ -2909,7 +2905,7 @@
   }
 
   .cw-publish {
-    color: var(--c-gray);
+    color: var(--c-text);
     background: var(--c-green);
   }
 
@@ -5007,6 +5003,25 @@
 
 .ag-add:hover {
   transform: scale(1.12);
+}
+
+/* The narrow canvas runs top to bottom, so it is taller to keep the zoom near 1. */
+.ag-canvas[data-compact] {
+  height: 26rem;
+}
+
+/* The narrow canvas still zooms out a little, so the button grows to stay a 24px target on screen. */
+.ag-node[data-compact] .ag-add {
+  right: -16px;
+  bottom: -16px;
+  width: 32px;
+  height: 32px;
+}
+
+/* React Flow's attribution link is tiny text; padding gives it a 24px target. */
+.react-flow__attribution a {
+  display: inline-block;
+  padding: 7px 6px;
 }
 
 .ag-remove {

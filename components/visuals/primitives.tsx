@@ -1,4 +1,5 @@
 import { type ReactNode, useId } from 'react';
+import { VIZ_FOG, VIZ_GRAPHITE, VIZ_INK, VIZ_PAPER, VIZ_SIGNAL } from './palette';
 
 /**
  * SVG building blocks for the project reconstructions. Every visual ships a
@@ -94,9 +95,9 @@ interface TagProps {
 }
 
 const NODE_FILL: Record<VizTheme, { fill: string; stroke: string; title: string; kicker: string }> = {
-  [VizTheme.DARK]: { fill: '#20211d', stroke: '#45463f', title: '#f4f1e8', kicker: '#a9a79c' },
-  [VizTheme.LIGHT]: { fill: '#f4f1e8', stroke: '#171815', title: '#171815', kicker: '#5c5b54' },
-  [VizTheme.SURFACE]: { fill: '#fbfaf6', stroke: '#171815', title: '#171815', kicker: '#5c5b54' },
+  [VizTheme.DARK]: { fill: '#20211d', stroke: '#45463f', title: VIZ_PAPER, kicker: VIZ_FOG },
+  [VizTheme.LIGHT]: { fill: VIZ_PAPER, stroke: VIZ_INK, title: VIZ_INK, kicker: VIZ_GRAPHITE },
+  [VizTheme.SURFACE]: { fill: '#fbfaf6', stroke: VIZ_INK, title: VIZ_INK, kicker: VIZ_GRAPHITE },
 };
 
 export function VizFrame({
@@ -134,9 +135,13 @@ export function Dots({ width, height, color, background }: DotsProps) {
   );
 }
 
-export function wirePath(from: Pt, to: Pt): string {
-  const k = Math.max(30, Math.abs(to.x - from.x) * 0.5);
-  return `M${from.x} ${from.y}C${from.x + k} ${from.y} ${to.x - k} ${to.y} ${to.x} ${to.y}`;
+/**
+ * The horizontal cubic-bezier wire the editor draws between ports. `k` is the
+ * control-point offset; scenes with their own minimum bend pass it explicitly.
+ */
+export function wirePath(from: Pt, to: Pt, k?: number): string {
+  const bend = k ?? Math.max(30, Math.abs(to.x - from.x) * 0.5);
+  return `M${from.x} ${from.y}C${from.x + bend} ${from.y} ${to.x - bend} ${to.y} ${to.x} ${to.y}`;
 }
 
 export function verticalPath(from: Pt, to: Pt): string {
@@ -144,7 +149,7 @@ export function verticalPath(from: Pt, to: Pt): string {
   return `M${from.x} ${from.y}C${from.x} ${from.y + k} ${to.x} ${to.y - k} ${to.x} ${to.y}`;
 }
 
-export function Wire({ from, to, state = VizState.NORMAL, color = '#171815', vertical, dashed }: WireProps) {
+export function Wire({ from, to, state = VizState.NORMAL, color = VIZ_INK, vertical, dashed }: WireProps) {
   return (
     <path
       d={vertical ? verticalPath(from, to) : wirePath(from, to)}
@@ -171,7 +176,7 @@ export function VizNode({
   theme = VizTheme.LIGHT,
   state = VizState.NORMAL,
   ports = {},
-  accent = '#c7f36b',
+  accent = VIZ_SIGNAL,
   children,
 }: VizNodeProps) {
   const colors = NODE_FILL[theme];
@@ -220,4 +225,48 @@ export function Tag({ x, y, label, fill, color, stroke }: TagProps) {
 
 export function Bar({ x, y, w, fill, h = 8 }: BarProps) {
   return <rect x={x} y={y} width={w} height={h} rx={h / 2} fill={fill} />;
+}
+
+interface CursorProps extends Pt {
+  /** Keep the SVG's default miter joins, where the scene draws the cursor unstyled. */
+  miter?: boolean;
+}
+
+/** The pointer arrow the editor draws for remote and guided actions. */
+export function Cursor({ x, y, miter }: CursorProps) {
+  return (
+    <path
+      transform={`translate(${x} ${y})`}
+      d="M0 0L0 22L6 16.5L10.5 26L14.5 24.2L10 14.8L17.5 14.8Z"
+      fill={VIZ_PAPER}
+      stroke={VIZ_INK}
+      strokeWidth="1.4"
+      strokeLinejoin={miter ? undefined : 'round'}
+    />
+  );
+}
+
+interface SelectionBoxProps extends Pt {
+  w: number;
+  h: number;
+  /** Omit where the scene draws its own frame and only the corner handles are wanted. */
+  frame?: boolean;
+}
+
+/** A selection: a faint frame with a paper handle pinned to each corner. */
+export function SelectionBox({ x, y, w, h, frame = true }: SelectionBoxProps) {
+  const corners: [number, number][] = [
+    [x, y],
+    [x + w, y],
+    [x, y + h],
+    [x + w, y + h],
+  ];
+  return (
+    <g>
+      {frame ? <rect x={x} y={y} width={w} height={h} fill="none" stroke="rgba(244,241,232,0.55)" strokeWidth={1} /> : null}
+      {corners.map(([cx, cy]) => (
+        <rect key={`${cx}-${cy}`} x={cx - 4} y={cy - 4} width={8} height={8} fill={VIZ_PAPER} />
+      ))}
+    </g>
+  );
 }

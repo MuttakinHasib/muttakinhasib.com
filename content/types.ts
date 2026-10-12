@@ -25,6 +25,17 @@ export const ProjectTone = {
 } as const;
 export type ProjectTone = (typeof ProjectTone)[keyof typeof ProjectTone];
 
+/**
+ * The single source for which tones render on the dark canvas. The home
+ * features and the case-study heroes both ask this instead of hard-coding
+ * their own tone lists; globals.css maps every tone to its --tone variable.
+ */
+const DARK_TONES: ReadonlySet<ProjectTone> = new Set([ProjectTone.SIGNAL, ProjectTone.STREAM]);
+
+export function isDarkTone(tone: ProjectTone): boolean {
+  return DARK_TONES.has(tone);
+}
+
 export interface Capability {
   id: CapabilityId;
   name: string;

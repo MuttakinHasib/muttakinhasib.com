@@ -1,4 +1,5 @@
 import { EditorIcon, Glyph } from './editor-icons';
+import { VIZ_FOG as FOG, VIZ_NODE as NODE, VIZ_PAPER as PAPER, VIZ_STROKE as STROKE } from './palette';
 import type { Pt } from './primitives';
 
 /**
@@ -25,11 +26,7 @@ export interface SelectionToolbarLayout {
   runW: number;
 }
 
-const NODE = '#1b1b1a';
-const STROKE = '#30302c';
 const BUTTON = '#2c2c29';
-const PAPER = '#f4f1e8';
-const FOG = '#a9a79c';
 const CELL = 34;
 
 export function selectionToolbarLayout({ x, compact }: ToolbarLayoutRequest): SelectionToolbarLayout {

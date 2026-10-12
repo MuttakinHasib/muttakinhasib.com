@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import {
   type KeyboardEvent,
+  memo,
   type PointerEvent,
   type ReactNode,
   useCallback,
@@ -13,8 +14,10 @@ import {
   useState,
 } from 'react';
 import { vars } from '@/lib/css';
-import { type Box, busWire, clamp, horizontalWire, Port, portPoint, verticalWire } from './geometry';
-import { edgeKey, neighbours, plan } from './planner';
+import { type Box, horizontalWire, Port, portPoint, verticalWire } from './geometry';
+import { INTRO, nodeDelay } from './intro';
+import { edgeKey, plan, type Plan } from './planner';
+import { announcementFor, clampOffset, downstreamOf, feeds, nextFocus, routeFor, upstreamOf } from './policy';
 import { type GraphModel, type GraphNodeModel, NodeKind } from './types';
 
 interface GraphCanvasProps {
@@ -24,16 +27,12 @@ interface GraphCanvasProps {
 
 interface GraphNodeProps {
   node: GraphNodeModel;
-  state: NodeState;
-  delay: number;
-  register: (element: HTMLButtonElement | null) => void;
-  handlers: NodeHandlers;
-}
-
-interface NodeState {
   selected: boolean;
   dimmed: boolean;
   linked: boolean;
+  delay: number;
+  register: (element: HTMLButtonElement | null) => void;
+  handlers: NodeHandlers;
 }
 
 interface NodeHandlers {
@@ -75,26 +74,6 @@ const INSPECTOR_WIRE = 'inspector';
 /** The output card is fed by the traced projects: one wire per project. */
 const feedKey = (projectId: string) => `${INSPECTOR_WIRE}:${projectId}`;
 
-/** Milliseconds from first paint. Node delays here mirror the CSS intro. */
-const INTRO = {
-  headlineWire: 650,
-  root: 950,
-  rootEdges: 1150,
-  capability: 1250,
-  capabilityEdges: 1450,
-  project: 1550,
-  inspector: 1800,
-  inspectorWire: 1950,
-  pulse: 2250,
-  done: 3000,
-} as const;
-
-const NODE_DELAY: Record<NodeKind, number> = {
-  [NodeKind.ROOT]: INTRO.root,
-  [NodeKind.CAPABILITY]: INTRO.capability,
-  [NodeKind.PROJECT]: INTRO.project,
-};
-
 const COLUMN: Record<NodeKind, number> = {
   [NodeKind.ROOT]: 0,
   [NodeKind.CAPABILITY]: 1,
@@ -106,8 +85,6 @@ const KIND_LABEL: Record<NodeKind, string> = {
   [NodeKind.CAPABILITY]: 'capability',
   [NodeKind.PROJECT]: 'project',
 };
-
-const listFormat = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
 
 /** Ref callbacks are cached per key so React doesn't detach/reattach them each render. */
 function createNodeRegistry() {
@@ -155,12 +132,8 @@ function createWireRegistry() {
   return { set, register };
 }
 
-function GraphNode({ node, state, delay, register, handlers }: GraphNodeProps) {
-  const label =
-    node.kind === NodeKind.PROJECT
-      ? `${node.title}, project at ${node.meta}`
-      : `${node.title}, ${KIND_LABEL[node.kind]}`;
-
+/** Model nodes, delays, registry callbacks, and handlers are stable, so a focus change only re-renders the nodes whose state changed. */
+const GraphNode = memo(function GraphNode({ node, selected, dimmed, linked, delay, register, handlers }: GraphNodeProps) {
   return (
     <button
       ref={register}
@@ -168,11 +141,10 @@ function GraphNode({ node, state, delay, register, handlers }: GraphNodeProps) {
       className="graph-node intro-node"
       data-kind={node.kind}
       data-tone={node.tone}
-      data-selected={state.selected || undefined}
-      data-dim={state.dimmed || undefined}
-      data-linked={state.linked || undefined}
-      aria-pressed={state.selected}
-      aria-label={label}
+      data-selected={selected || undefined}
+      data-dim={dimmed || undefined}
+      data-linked={linked || undefined}
+      aria-pressed={selected}
       style={vars({ delay: `${delay}ms` })}
       onClick={() => handlers.onSelect(node.id)}
       onKeyDown={(event) => handlers.onKeyDown(event, node)}
@@ -181,21 +153,28 @@ function GraphNode({ node, state, delay, register, handlers }: GraphNodeProps) {
       onPointerUp={(event) => handlers.onPointerEnd(event, node.id)}
       onPointerCancel={(event) => handlers.onPointerEnd(event, node.id)}
     >
-      <span className="graph-node-meta type-mono" aria-hidden="true">
-        <span>{KIND_LABEL[node.kind]}</span>
-        <span className="graph-node-count">{node.meta}</span>
-      </span>
-      <span className="graph-node-title" aria-hidden="true">
+      {/* Title first so the accessible name leads with it; CSS shows the meta row above. */}
+      <span className="graph-node-title">
         <span className="graph-node-full">{node.title}</span>
         <span className="graph-node-short">{node.shortTitle}</span>
+      </span>
+      <span className="graph-node-meta type-mono">
+        <span>
+          <span className="sr-only">, </span>
+          {KIND_LABEL[node.kind]}
+        </span>
+        <span className="graph-node-count">
+          <span className="sr-only">, </span>
+          {node.meta}
+        </span>
       </span>
       <span className="port port-in" aria-hidden="true" />
       <span className="port port-out" aria-hidden="true" />
     </button>
   );
-}
+});
 
-function TraceList({ label, items, onSelect }: TraceListProps) {
+const TraceList = memo(function TraceList({ label, items, onSelect }: TraceListProps) {
   return (
     <div className="trace-list">
       <p className="type-small text-graphite">{label}</p>
@@ -211,7 +190,7 @@ function TraceList({ label, items, onSelect }: TraceListProps) {
       </ul>
     </div>
   );
-}
+});
 
 export function GraphCanvas({ model, children }: GraphCanvasProps) {
   const { nodes, edges, details } = model;
@@ -233,7 +212,13 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
   const frame = useRef(0);
   const desktop = useRef(false);
 
-  const currentPlan = useMemo(() => plan(edges, focus), [edges, focus]);
+  // One plan per node up front, so selecting and announcing never re-plan.
+  const plans = useMemo(() => {
+    const byFocus = new Map<string, Plan>();
+    for (const node of nodes) byFocus.set(node.id, plan(edges, node.id));
+    return byFocus;
+  }, [nodes, edges]);
+  const currentPlan = plans.get(focus) ?? plan(edges, focus);
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const columns = useMemo(
     () => ({
@@ -244,11 +229,8 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
     [nodes],
   );
   const rootId = columns[NodeKind.ROOT][0]?.id;
-  const feeds = useMemo(
-    () =>
-      columns[NodeKind.PROJECT]
-        .filter((node) => node.id === focus || currentPlan.downstream.has(node.id))
-        .map((node) => node.id),
+  const feedIds = useMemo(
+    () => feeds(columns[NodeKind.PROJECT], focus, currentPlan),
     [columns, focus, currentPlan],
   );
 
@@ -275,25 +257,17 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
       });
     }
 
-    const capabilityIndex = new Map(columns[NodeKind.CAPABILITY].map((node, index) => [node.id, index]));
+    // Stacked, the bus trunk runs down the middle of the gutter the project column leaves on its left.
+    const projectColumn = stage.querySelector<HTMLElement>('.graph-col-project');
+    const trunkX = projectColumn
+      ? projectColumn.offsetLeft + Number.parseFloat(getComputedStyle(projectColumn).paddingLeft) / 2
+      : 0;
     for (const edge of edges) {
       const from = boxes.get(edge.from);
       const to = boxes.get(edge.to);
       if (!from || !to) continue;
       const fromKind = nodeById.get(edge.from)?.kind;
-      let d: string;
-      if (isDesktop) {
-        d = horizontalWire(portPoint(from, Port.RIGHT), portPoint(to, Port.LEFT));
-      } else if (fromKind === NodeKind.ROOT) {
-        d = verticalWire(portPoint(from, Port.BOTTOM), portPoint(to, Port.TOP));
-      } else {
-        d = busWire({
-          from: portPoint(from, Port.BOTTOM),
-          to: portPoint(to, Port.LEFT),
-          gutterX: 4 + (capabilityIndex.get(edge.from) ?? 0) * 4,
-        });
-      }
-      setPath(edgeKey(edge), d);
+      setPath(edgeKey(edge), routeFor({ from, to, fromKind, desktop: isDesktop, trunkX }));
     }
 
     if (!isDesktop) return;
@@ -396,11 +370,9 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
     const timer = window.setTimeout(() => {
       document.documentElement.dataset.intro = 'done';
       setIntroElapsed(Number.POSITIVE_INFINITY);
-    }, remaining(INTRO.done));
+    }, Math.max(0, Math.round(INTRO.done - introElapsed)));
     return () => window.clearTimeout(timer);
-    // `remaining` only depends on introElapsed, which `introActive` tracks.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [introActive]);
+  }, [introActive, introElapsed]);
 
   const select = useCallback(
     (id: string) => {
@@ -409,44 +381,16 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
         return;
       }
       setFocus(id);
-      const node = nodeById.get(id);
-      if (!node) return;
-      const next = plan(edges, id);
-      const names = (ids: Iterable<string>, kind: NodeKind) =>
-        [...ids].map((nodeId) => nodeById.get(nodeId)).filter((item) => item?.kind === kind).map((item) => item?.title ?? '');
-      if (node.kind === NodeKind.PROJECT) {
-        setAnnouncement(`${node.title}: built from ${listFormat.format(names(next.upstream, NodeKind.CAPABILITY))}.`);
-      } else if (node.kind === NodeKind.CAPABILITY) {
-        setAnnouncement(`${node.title}: feeds ${listFormat.format(names(next.downstream, NodeKind.PROJECT))}.`);
-      } else {
-        setAnnouncement(`${node.title}: feeds ${listFormat.format(names(next.downstream, NodeKind.CAPABILITY))}.`);
-      }
+      const next = plans.get(id);
+      if (!next || !nodeById.has(id)) return;
+      setAnnouncement(announcementFor(model, next));
     },
-    [edges, nodeById],
+    [model, nodeById, plans],
   );
 
   const onKeyDown = useCallback(
     (event: KeyboardEvent<HTMLButtonElement>, node: GraphNodeModel) => {
-      const column = columns[node.kind];
-      const index = column.findIndex((item) => item.id === node.id);
-      const links = neighbours(edges, node.id);
-      let target: string | undefined;
-      switch (event.key) {
-        case 'ArrowDown':
-          target = column[(index + 1) % column.length]?.id;
-          break;
-        case 'ArrowUp':
-          target = column[(index - 1 + column.length) % column.length]?.id;
-          break;
-        case 'ArrowRight':
-          target = links.down[0];
-          break;
-        case 'ArrowLeft':
-          target = links.up[0];
-          break;
-        default:
-          return;
-      }
+      const target = nextFocus(node, event.key, columns, edges);
       if (!target) return;
       event.preventDefault();
       nodeRefs.current.get(target)?.focus();
@@ -483,16 +427,22 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
         element.setPointerCapture(event.pointerId);
         element.dataset.dragging = 'true';
       }
-      const x = clamp(drag.originX + dx, [
-        -element.offsetLeft,
-        stage.clientWidth - element.offsetLeft - element.offsetWidth,
-      ]);
-      const y = clamp(drag.originY + dy, [
-        grid.offsetTop - element.offsetTop,
-        grid.offsetTop + grid.offsetHeight - element.offsetTop - element.offsetHeight,
-      ]);
-      offsets.current.set(id, { x, y });
-      element.style.translate = `${x}px ${y}px`;
+      const next = clampOffset(
+        { x: drag.originX, y: drag.originY },
+        {
+          dx,
+          dy,
+          left: element.offsetLeft,
+          top: element.offsetTop,
+          width: element.offsetWidth,
+          height: element.offsetHeight,
+          stageWidth: stage.clientWidth,
+          gridTop: grid.offsetTop,
+          gridHeight: grid.offsetHeight,
+        },
+      );
+      offsets.current.set(id, next);
+      element.style.translate = `${next.x}px ${next.y}px`;
       scheduleGeometry();
     },
     [scheduleGeometry],
@@ -532,20 +482,21 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
     requestAnimationFrame(step);
   }, [applyGeometry, clearOffsets]);
 
-  const handlers: NodeHandlers = { onSelect: select, onKeyDown, onPointerDown, onPointerMove, onPointerEnd };
+  const handlers = useMemo<NodeHandlers>(
+    () => ({ onSelect: select, onKeyDown, onPointerDown, onPointerMove, onPointerEnd }),
+    [select, onKeyDown, onPointerDown, onPointerMove, onPointerEnd],
+  );
 
   const focusNode = nodeById.get(focus);
   const detail = details[focus];
-  const upstreamCapabilities = [...currentPlan.upstream]
-    .map((id) => nodeById.get(id))
-    .filter((node): node is GraphNodeModel => node?.kind === NodeKind.CAPABILITY);
-  const feedsKind = focusNode?.kind === NodeKind.ROOT ? NodeKind.CAPABILITY : NodeKind.PROJECT;
-  const downstreamNodes =
-    focusNode?.kind === NodeKind.PROJECT
-      ? []
-      : [...currentPlan.downstream]
-          .map((id) => nodeById.get(id))
-          .filter((node): node is GraphNodeModel => node?.kind === feedsKind);
+  const upstreamCapabilities = useMemo(
+    () => upstreamOf(currentPlan, nodes, NodeKind.CAPABILITY),
+    [currentPlan, nodes],
+  );
+  const downstreamNodes = useMemo(
+    () => downstreamOf(currentPlan, nodes, focusNode?.kind),
+    [currentPlan, nodes, focusNode],
+  );
   const lastActiveColumn = focusNode ? COLUMN[focusNode.kind] : 0;
   const pulseStart = introActive ? remaining(INTRO.pulse) : 0;
 
@@ -556,8 +507,10 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
         <GraphNode
           key={node.id}
           node={node}
-          state={{ selected: node.id === focus, dimmed: !related, linked: related && node.id !== focus }}
-          delay={NODE_DELAY[kind] + index * 70}
+          selected={node.id === focus}
+          dimmed={!related}
+          linked={related && node.id !== focus}
+          delay={nodeDelay(kind, index)}
           register={registerNode(node.id)}
           handlers={handlers}
         />
@@ -592,7 +545,7 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
           pathLength={1}
           style={vars({ delay: `${remaining(INTRO.headlineWire)}ms` })}
         />
-        {feeds.map((id) => (
+        {feedIds.map((id) => (
           <path
             key={feedKey(id)}
             ref={registerPath(feedKey(id))}
@@ -618,7 +571,7 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
               );
             })}
           <g className="wire-desktop">
-            {feeds.map((id) => (
+            {feedIds.map((id) => (
               <g key={feedKey(id)}>
                 <path
                   ref={registerPath(feedKey(id))}

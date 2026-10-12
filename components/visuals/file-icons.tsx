@@ -56,3 +56,41 @@ export function FileTypeIcon({ x, y, name, size = 14 }: FileTypeIconProps) {
     </svg>
   );
 }
+
+interface HtmlFileIconProps {
+  path: string;
+  className?: string;
+}
+
+/** The file-type icon as cocoding.ai's HTML FileIcon draws it. */
+export function HtmlFileIcon({ path, className }: HtmlFileIconProps) {
+  const glyph = fileTypeFor(path);
+  return (
+    <svg className={className} viewBox={`0 0 ${glyph.box} ${glyph.box}`} aria-hidden="true">
+      <path d={glyph.d} fill={glyph.fill} fillRule={glyph.evenOdd ? 'evenodd' : undefined} />
+    </svg>
+  );
+}
+
+interface HtmlFolderIconProps {
+  className?: string;
+}
+
+/** The explorer's folder: line-md's two-tone folder, in the row's colour. */
+export function HtmlFolderIcon({ className }: HtmlFolderIconProps) {
+  return (
+    <svg
+      className={className}
+      viewBox={`0 0 ${FOLDER_TWOTONE.box} ${FOLDER_TWOTONE.box}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={FOLDER_TWOTONE.body} fill="currentColor" fillOpacity={0.3} />
+      <path d={FOLDER_TWOTONE.tab} />
+    </svg>
+  );
+}

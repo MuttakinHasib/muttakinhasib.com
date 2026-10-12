@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import { Port, Tag, VizFrame, VizNode, verticalPath, wirePath } from './primitives';
+import { VIZ_FOG as FOG, VIZ_GRAPHITE as GRAPHITE, VIZ_INK as INK, VIZ_LEDGER as LEDGER, VIZ_PAPER as PAPER } from './palette';
 
 interface PillProps {
   x: number;
@@ -27,11 +28,6 @@ interface GridProps {
   width: number;
   height: number;
 }
-
-const INK = '#171815';
-const PAPER = '#f4f1e8';
-const LEDGER = '#e6a03a';
-const GRAPHITE = '#5c5b54';
 
 function Grid({ width, height }: GridProps) {
   const id = useId();
@@ -168,7 +164,7 @@ function Wide() {
       <text x={304} y={621} className="v-label" fill={PAPER}>
         Shared data-access layer
       </text>
-      <text x={880} y={621} textAnchor="end" className="v-kicker" fill="#a9a79c">
+      <text x={880} y={621} textAnchor="end" className="v-kicker" fill={FOG}>
         30+ domain modules
       </text>
       <Cylinder x={300} y={680} label="tenant_a" />
@@ -249,7 +245,7 @@ function Narrow() {
       <text x={44} y={570} className="v-label" fill={PAPER}>
         Shared data-access layer
       </text>
-      <text x={556} y={570} textAnchor="end" className="v-kicker" fill="#a9a79c">
+      <text x={556} y={570} textAnchor="end" className="v-kicker" fill={FOG}>
         30+ modules
       </text>
       <Cylinder x={40} y={636} label="tenant_a" />

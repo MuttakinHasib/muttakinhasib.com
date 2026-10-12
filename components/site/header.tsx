@@ -1,12 +1,13 @@
 import Link from 'next/link';
+import { AvailabilityChip } from '@/components/site/availability-chip';
 import { profile } from '@/content/profile';
-import { NavLinks } from './NavLinks';
+import { NavLinks } from './nav-links';
 
 export function Header() {
   return (
     <header className="site-header" style={{ viewTransitionName: 'site-header' }}>
       <nav aria-label="Primary" className="shell flex h-full items-center justify-between gap-4">
-        <Link href="/" className="wordmark" aria-label={`${profile.name}, home`}>
+        <Link href="/" className="wordmark" aria-label={`${profile.shortName}, home`}>
           <span className="wordmark-mark" aria-hidden="true">
             <span />
           </span>
@@ -16,10 +17,7 @@ export function Header() {
           <NavLinks />
           {/* Tablet and up: phones reach the resume from the footer and the About page. */}
           <div className="hidden items-center gap-4 md:flex">
-            <p className="availability hidden lg:flex">
-              <span className="status-dot" aria-hidden="true" />
-              {profile.availability}
-            </p>
+            <AvailabilityChip className="availability hidden lg:flex" />
             <a href={profile.resume} className="header-resume" rel="noopener" target="_blank">
               Resume
               <span className="sr-only"> (PDF, opens in a new tab)</span>

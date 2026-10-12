@@ -60,18 +60,18 @@ export function Impact() {
             A number is only useful next to what it measured, so each one keeps its context and its source.
           </p>
         </div>
-        <dl className="impact-grid">
-          <div className="impact-lead-row">
+        <div className="impact-grid">
+          <dl className="impact-lead-row">
             {lead.map((entry) => (
               <LeadEntry key={entry.claim} entry={entry} />
             ))}
-          </div>
-          <div className="impact-support-row">
+          </dl>
+          <dl className="impact-support-row">
             {support.map((entry) => (
               <SupportEntry key={entry.claim} entry={entry} />
             ))}
-          </div>
-        </dl>
+          </dl>
+        </div>
       </div>
     </section>
   );

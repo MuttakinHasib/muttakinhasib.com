@@ -1,7 +1,5 @@
 import { profile } from '@/content/profile';
-
-const INK = '#171815';
-const SIGNAL = '#c7f36b';
+import { VIZ_FOG as FOG, VIZ_GRAPHITE as GRAPHITE, VIZ_INK as INK, VIZ_PAPER as PAPER, VIZ_SIGNAL as SIGNAL } from '@/components/visuals/palette';
 
 /** Dhaka wired to the four countries Hasib's remote teams worked from. */
 export function TeamsDiagram() {
@@ -26,10 +24,10 @@ export function TeamsDiagram() {
           );
         })}
         <rect x={16} y={hubY - 36} width={166} height={72} rx={7} fill={INK} />
-        <text x={34} y={hubY - 8} className="td-kicker" fill="#a9a79c">
+        <text x={34} y={hubY - 8} className="td-kicker" fill={FOG}>
           home base
         </text>
-        <text x={34} y={hubY + 18} className="td-title" fill="#f4f1e8">
+        <text x={34} y={hubY + 18} className="td-title" fill={PAPER}>
           Dhaka, GMT+6
         </text>
         <circle cx={182} cy={hubY} r={5.5} fill={SIGNAL} stroke={INK} strokeWidth="1.75" />
@@ -37,12 +35,12 @@ export function TeamsDiagram() {
           const y = top + index * step;
           return (
             <g key={row.place}>
-              <rect x={300} y={y} width={204} height={52} rx={7} fill="#f4f1e8" stroke={INK} strokeWidth="1.25" />
+              <rect x={300} y={y} width={204} height={52} rx={7} fill={PAPER} stroke={INK} strokeWidth="1.25" />
               <circle cx={300} cy={y + 26} r={5.5} fill={SIGNAL} stroke={INK} strokeWidth="1.75" />
               <text x={318} y={y + 22} className="td-title" fill={INK}>
                 {row.place}
               </text>
-              <text x={318} y={y + 41} className="td-kicker" fill="#5c5b54">
+              <text x={318} y={y + 41} className="td-kicker" fill={GRAPHITE}>
                 {row.companies}
               </text>
             </g>

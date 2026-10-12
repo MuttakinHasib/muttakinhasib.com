@@ -1,10 +1,10 @@
 import type { JSX } from 'react';
 import { ProjectSlug } from '@/content/types';
-import { AppBuilderVisual } from './AppBuilderVisual';
-import { CocodingVisual } from './CocodingVisual';
-import { GenerativeFillVisual } from './GenerativeFillVisual';
-import { HashmatoVisual } from './HashmatoVisual';
-import { IgotVisual } from './IgotVisual';
+import { AppBuilderVisual } from './app-builder-visual';
+import { CocodingVisual } from './cocoding-visual';
+import { GenerativeFillVisual } from './generative-fill-visual';
+import { HashmatoVisual } from './hashmato-visual';
+import { IgotVisual } from './igot-visual';
 
 interface ProjectVisualProps {
   slug: ProjectSlug;
