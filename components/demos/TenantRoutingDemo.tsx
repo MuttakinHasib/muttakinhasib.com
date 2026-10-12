@@ -275,7 +275,7 @@ export default function TenantRoutingDemo() {
     <DemoFrame
       title="Follow a request"
       instructions="Pick an example tenant and a request type. The highlighted path shows which interface, provider, and database that tenant’s request uses."
-      note="Example tenants and a simplified map of the services described in this case study. Not a complete architecture diagram."
+      note="Example tenants and a simplified map of the services described in this case study."
     >
       <div className="tr-layout">
         <div className="tr-controls">
