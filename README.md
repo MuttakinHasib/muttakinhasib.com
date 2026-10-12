@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# muttakinhasib.com
 
-## Getting Started
+Personal portfolio of Muttakin Islam Hasib, Senior Full Stack Engineer. Built with Next.js 16 (App Router, Cache Components), React 19, TypeScript, and Tailwind CSS 4.
 
-First, run the development server:
+The site is a runnable dependency graph: capabilities feed projects, and selecting any node traces what it was built from and what it feeds. See [DESIGN.md](DESIGN.md) for the concept, tokens, and motion rules.
+
+## Scripts
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
+bun dev          # http://localhost:3000
+bun run lint
+bun run typecheck
+bun run test     # graph planner, app planner, execution order
+bun run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+app/                     routes: /, /work, /work/[slug], /about, sitemap, robots, OG images
+components/graph/        hero graph: planner (pure), geometry, GraphCanvas (client)
+components/home/         homepage sections
+components/visuals/      SVG reconstructions of each project (wide + narrow compositions)
+components/demos/        interactive case-study prototypes, lazy-loaded per page
+components/case-study/   case-study section framework
+content/                 typed, resume-backed content (projects, impact, experience)
+lib/                     site constants, JSON-LD, OG renderer, small hooks
+tests/                   node:test suites for the pure graph logic
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+All copy and metrics live in `content/` and are taken from the resume. Change them there; no component hard-codes project facts.
 
-## Learn More
+## Adding real screenshots
 
-To learn more about Next.js, take a look at the following resources:
+The project visuals are original reconstructions, labelled as such on case-study pages. To use real product screenshots instead, replace the component in `components/visuals/ProjectVisual.tsx` for that project with a `next/image` and remove the reconstruction note in `app/work/[slug]/page.tsx`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deploys to Vercel with no extra configuration. `metadataBase` and canonical URLs use `https://muttakinhasib.com` (`content/profile.ts`).
