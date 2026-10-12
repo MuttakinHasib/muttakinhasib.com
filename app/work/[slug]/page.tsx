@@ -202,8 +202,8 @@ async function CaseStudy({ params }: CaseStudyProps) {
         <CaseSection id="outcomes" title="Outcomes">
           <MetricList metrics={project.outcomes} className="cs-metrics" />
           <p className="type-small mt-8 text-graphite">
-            Figures come from my resume. Where a number describes the product rather than my work, the context says
-            so.
+            Figures come from my resume or from measuring the shipped product. Where a number describes the product
+            or the team rather than my work, the context says so.
           </p>
         </CaseSection>
 
