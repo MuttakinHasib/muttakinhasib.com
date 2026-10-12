@@ -12,6 +12,26 @@ import { projectTitleMorphName, projectVisualMorphName } from '@/components/site
  * choreography lives here so the shared pieces below stay coherent.
  */
 
+interface ProjectProps {
+  project: Project;
+}
+
+interface SummaryProps extends ProjectProps {
+  dark: boolean;
+  /** Grid placement, for variants that put the summary straight into their grid. */
+  className?: string;
+}
+
+interface BuiltSectionProps {
+  label: string;
+  items: string[];
+  led?: boolean;
+}
+
+interface FeatureLayoutProps extends ProjectProps {
+  variant: FeatureVariant;
+}
+
 export const FeatureVariant = {
   SPLIT_DARK: 'split-dark',
   VISUAL_FIRST: 'visual-first',
@@ -31,10 +51,6 @@ export function variantForSlug(slug: ProjectSlug): FeatureVariant {
     [ProjectSlug.IGOT]: FeatureVariant.BUILT_LED,
   };
   return bySlug[slug];
-}
-
-interface ProjectProps {
-  project: Project;
 }
 
 function ProjectTitle({ project }: ProjectProps) {
@@ -101,8 +117,9 @@ function CaseStudyLink({ project }: ProjectProps) {
   );
 }
 
-function Summary({ project, dark }: ProjectProps & { dark: boolean }) {
-  return <p className={`type-lead ${dark ? 'text-paper' : ''}`}>{project.summary}</p>;
+function Summary({ project, dark, className }: SummaryProps) {
+  const classes = ['type-lead', dark ? 'text-paper' : '', className ?? ''].filter(Boolean).join(' ');
+  return <p className={classes}>{project.summary}</p>;
 }
 
 function SplitDark({ project }: ProjectProps): JSX.Element {
@@ -168,7 +185,7 @@ function Stage({ project }: ProjectProps): JSX.Element {
           <FeatureVisual project={project} />
         </div>
         <div className="grid-12 mt-10 gap-y-8 lg:mt-14">
-          <Summary project={project} dark={dark} />
+          <Summary project={project} dark={dark} className="col-span-4 md:col-span-6 lg:col-span-4" />
           <div className="col-span-4 md:col-span-6 lg:col-span-4">
             <Highlights project={project} />
           </div>
@@ -208,7 +225,7 @@ function SystemLayout({ project }: ProjectProps): JSX.Element {
   );
 }
 
-function BuiltSection({ label, items, led }: { label: string; items: string[]; led?: boolean }) {
+function BuiltSection({ label, items, led }: BuiltSectionProps) {
   return (
     <section aria-label={label}>
       <h4 className="feature-split-label">
@@ -260,7 +277,7 @@ const variants: Record<FeatureVariant, (props: ProjectProps) => JSX.Element> = {
   [FeatureVariant.BUILT_LED]: BuiltLed,
 };
 
-export function FeatureLayout({ project, variant }: ProjectProps & { variant: FeatureVariant }) {
+export function FeatureLayout({ project, variant }: FeatureLayoutProps) {
   const Feature = variants[variant];
   return <Feature project={project} />;
 }
