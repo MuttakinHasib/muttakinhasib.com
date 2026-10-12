@@ -119,7 +119,7 @@ function SplitDark({ project }: FeatureProps) {
           <ProjectTitle project={project} />
           <FeatureMeta project={project} />
         </div>
-        <div className="col-span-4 md:col-span-12 lg:col-span-8 lg:col-start-5 lg:row-span-2 lg:row-start-1 lg:-mr-[var(--gutter)]">
+        <div className="col-span-4 md:col-span-12 lg:sticky lg:top-[calc(var(--header-h)+2rem)] lg:col-span-8 lg:col-start-5 lg:row-span-2 lg:row-start-1 lg:-mr-[var(--gutter)] lg:self-start">
           <FeatureVisual project={project} />
         </div>
         <div className="col-span-4 md:col-span-8 lg:col-span-4 lg:row-start-2">

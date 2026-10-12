@@ -16,7 +16,7 @@ export async function ContactSection() {
       <div className="shell">
         <div className="contact-graph" aria-hidden="true">
           <span className="contact-node contact-node-self">
-            <span className="type-mono text-fog">person</span>
+            <span className="type-mono text-graphite">person</span>
             <span className="contact-node-title">{profile.shortName}</span>
             <span className="contact-port contact-port-out" />
           </span>

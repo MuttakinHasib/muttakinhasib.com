@@ -22,7 +22,6 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useMediaQuery } from '@/lib/use-media-query';
 import type { EditorGlyph } from '../visuals/editor-icons';
 import { Lucide } from '../visuals/lucide-icons';
 import { DemoFrame } from './DemoFrame';
@@ -63,6 +62,7 @@ interface TaskNodeData extends Record<string, unknown> {
   task: Task;
   order: number;
   pending: boolean;
+  /** Top to bottom with compact cards, on a narrow canvas. */
   vertical: boolean;
   canAdd: boolean;
   onAdd: (id: string) => void;
@@ -115,7 +115,10 @@ const starterEdges: DagEdge[] = [
 const NODE_WIDTH = 196;
 const NODE_HEIGHT = 124;
 const wideLayout: LayoutOptions = { nodeWidth: NODE_WIDTH, nodeHeight: NODE_HEIGHT, gapMain: 72, gapCross: 28, vertical: false };
-const narrowLayout: LayoutOptions = { ...wideLayout, gapMain: 56, gapCross: 20, vertical: true };
+/** On a narrow canvas the graph runs top to bottom and the cards shrink to their name and number, so it stays legible. */
+const narrowLayout: LayoutOptions = { nodeWidth: 148, nodeHeight: 52, gapMain: 44, gapCross: 16, vertical: true };
+/** Below this canvas width the full cards would have to zoom out past legibility. */
+const NARROW_CANVAS = 720;
 const FIT = { padding: 0.14 } as const;
 const MOVE_MS = 420;
 const SAVE_MS = 900;
@@ -151,7 +154,13 @@ function Icon({ glyph, className }: IconProps) {
 function TaskNodeView({ data }: NodeProps<TaskNode>) {
   const { task, order, pending, vertical, canAdd, onAdd } = data;
   return (
-    <div className="ag-node" data-kind={task.kind} data-pending={pending || undefined} style={{ '--task': task.color } as CSSProperties}>
+    <div
+      className="ag-node"
+      data-kind={task.kind}
+      data-pending={pending || undefined}
+      data-compact={vertical || undefined}
+      style={{ '--task': task.color } as CSSProperties}
+    >
       <Handle type="target" position={vertical ? Position.Top : Position.Left} className="ag-handle ag-handle-in" />
       <div className="ag-head">
         <span className="ag-name">{task.name}</span>
@@ -212,7 +221,9 @@ function placeNodes(graph: Graph, options: LayoutOptions): TaskNode[] {
 }
 
 export default function ExecutionOrderDemo() {
-  const vertical = useMediaQuery('(max-width: 39.99rem)');
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [canvasWidth, setCanvasWidth] = useState(0);
+  const vertical = canvasWidth > 0 && canvasWidth < NARROW_CANVAS;
   const options = vertical ? narrowLayout : wideLayout;
   const [graph, setGraph] = useState<Graph>({ tasks: starterTasks, edges: starterEdges });
   const [nodes, setNodes] = useState<TaskNode[]>(() => placeNodes({ tasks: starterTasks, edges: starterEdges }, wideLayout));
@@ -289,6 +300,14 @@ export default function ExecutionOrderDemo() {
     },
     [],
   );
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const observer = new ResizeObserver(([entry]) => setCanvasWidth(entry?.contentRect.width ?? 0));
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
 
   const apply = useCallback(
     (next: Graph, origin?: string) => {
@@ -439,7 +458,7 @@ export default function ExecutionOrderDemo() {
       note="A simplified reconstruction for this portfolio. iGOT.ai Studio’s engine syncs these edges with the backend; here the order is computed in the browser."
     >
       <div className="ag-layout">
-        <div className="ag-canvas">
+        <div className="ag-canvas" ref={canvasRef}>
           <div className="ag-toolbar">
             <button type="button" className="ag-chip" onClick={tidy}>
               <Icon glyph={Lucide.LAYOUT_GRID} className="ag-icon" />
