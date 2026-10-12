@@ -1,46 +1,40 @@
 import { type EditorGlyph, EditorIcon } from './editor-icons';
 import { Lucide } from './lucide-icons';
-import { Dots, type Pt, VizFrame, wirePath } from './primitives';
+import { Dots, type Pt, VizFrame } from './primitives';
 
 /**
- * iGOT.ai Studio's agent builder, reconstructed after the live product: the
- * workspace bar, the rail of task types, and an assistant's workflow on the
- * canvas. Agent tasks wear the green header and their avatar, tool tasks the
- * blue outline, and every card carries its place in the execution order, which
- * the graph engine keeps in step with the edges. Edges take the colour of the
- * task they leave, and the minimap and the zoom and Auto Layout controls sit in
- * the corner.
+ * iGOT.ai Studio's agent builder, reconstructed around what the graph engine
+ * does: the canvas is the program. An offer-letter assistant runs left to
+ * right; agent tasks ring green, tool tasks blue, and every card carries its
+ * place in the run order. Clicking + on Start Writing adds a task at once,
+ * dashed while it saves, and the Run order panel, derived from the edges layer
+ * by layer, already lists it.
  */
 
-const NodeKind = {
+const Kind = {
   AGENT: 'agent',
   TOOL: 'tool',
 } as const;
-type NodeKind = (typeof NodeKind)[keyof typeof NodeKind];
+type Kind = (typeof Kind)[keyof typeof Kind];
 
-interface Section {
-  title: string;
-  lines: readonly string[];
-}
-
-interface FlowNode {
+interface Task {
   id: string;
   order: number;
-  kind: NodeKind;
-  title: string;
-  subtitle?: string;
-  glyph?: EditorGlyph;
-  task: Section;
-  goal: readonly string[];
-  authorize?: boolean;
-  /** The task's colour: its outgoing edges and its block in the minimap. */
+  layer: number;
+  kind: Kind;
+  name: string;
+  glyph: EditorGlyph;
+  lines: readonly [string, string];
+  /** Its outgoing wires. */
   color: string;
+  /** Added optimistically: on the canvas before the server confirms it. */
+  saving?: boolean;
 }
 
 type Layout = Record<string, Pt>;
 
 interface CardProps extends Pt {
-  node: FlowNode;
+  task: Task;
   w: number;
 }
 
@@ -49,128 +43,121 @@ interface GraphProps {
   w: number;
 }
 
-interface MiniMapProps extends Pt {
+interface WireProps {
+  from: Pt;
+  to: Pt;
+  color: string;
+  dashed?: boolean;
+}
+
+interface PanelProps extends Pt {
   w: number;
   h: number;
-  layout: Layout;
-  nodeWidth: number;
+  columns?: number;
 }
 
-interface ControlsProps extends Pt {
+interface RowProps extends Pt {
   w: number;
+  task: Task;
 }
 
-interface RailTileProps extends Pt {
-  glyph?: EditorGlyph;
+interface KindStyle {
+  stroke: string;
+  fill: string;
 }
 
-interface ButtonProps extends Pt {
+interface PillProps extends Pt {
   w: number;
   label: string;
   glyph?: EditorGlyph;
-  filled?: string;
-  trailing?: EditorGlyph;
 }
 
-interface LinesProps extends Pt {
-  lines: readonly string[];
-}
+const CANVAS = '#0f0f0f';
+const NODE = '#1b1b1a';
+const STROKE = '#30302c';
+const PAPER = '#f4f1e8';
+const FOG = '#a9a79c';
+const INK = '#171815';
+const SIGNAL = '#c7f36b';
 
-interface RailLabelProps extends Pt {
-  label: string;
-}
+const KIND_STYLE: Record<Kind, KindStyle> = {
+  [Kind.AGENT]: { stroke: '#3fbf7f', fill: '#13231a' },
+  [Kind.TOOL]: { stroke: '#8ab4ff', fill: '#141b29' },
+};
 
-const INK = '#111827';
-const TEXT = '#374151';
-const MUTED = '#4b5563';
-const FAINT = '#6b7280';
-const LINE = '#e5e7eb';
-const SOFT = '#f9fafb';
-const GREEN = '#17994f';
-const PUBLIC = '#1e8a3c';
-const TOOL_EDGE = '#93b4f6';
-const INFO = '#2563eb';
-const GOAL = '#7c3aed';
-const AUTHORIZE = '#a51c1c';
-const ADD = '#1d4ed8';
+const CARD_HEIGHT = 96;
 
-const AGENT_HEIGHT = 126;
-const TOOL_HEIGHT = 162;
-const AUTHORIZE_HEIGHT = 30;
-
-const nodes: FlowNode[] = [
+const tasks: Task[] = [
   {
     id: 'collect',
     order: 1,
-    kind: NodeKind.TOOL,
-    title: 'Follow-up',
-    subtitle: 'Engage with a specific message',
+    layer: 1,
+    kind: Kind.TOOL,
+    name: 'Follow-up',
     glyph: Lucide.MESSAGES_SQUARE,
-    task: { title: 'Engagement Message', lines: ['Hi! Send the candidate’s', 'name, role, and start date.'] },
-    goal: ['Collect the details the', 'offer letter needs.'],
-    color: '#93c5fd',
+    lines: ['Ask the recruiter', 'for the details'],
+    color: '#8ab4ff',
   },
   {
     id: 'ocr',
     order: 2,
-    kind: NodeKind.TOOL,
-    title: 'File upload (OCR)',
-    subtitle: 'Import your data',
+    layer: 2,
+    kind: Kind.TOOL,
+    name: 'File upload (OCR)',
     glyph: Lucide.UPLOAD,
-    task: { title: 'Task Description', lines: ['Read the job description', 'the recruiter uploads.'] },
-    goal: ['Extract the role, salary,', 'and benefits.'],
-    color: '#38bdf8',
+    lines: ['Read the job', 'description PDF'],
+    color: '#e6a03a',
   },
   {
     id: 'search',
     order: 3,
-    kind: NodeKind.AGENT,
-    title: 'Search online',
-    task: { title: 'Task Description', lines: ['Find the company’s letter', 'template and brand tone.'] },
-    goal: ['Layout and tone rules', 'for the draft.'],
-    color: '#c084fc',
+    layer: 2,
+    kind: Kind.AGENT,
+    name: 'Search online',
+    glyph: Lucide.BOT,
+    lines: ['Find the letter', 'template and tone'],
+    color: '#b4a2ff',
   },
   {
     id: 'write',
     order: 4,
-    kind: NodeKind.AGENT,
-    title: 'Start Writing',
-    task: { title: 'Task Description', lines: ['Draft the offer letter from', 'tasks 1 to 3, on brand.'] },
-    goal: ['A complete, personalized', 'offer letter draft.'],
-    color: '#f43f7a',
-  },
-  {
-    id: 'review',
-    order: 5,
-    kind: NodeKind.TOOL,
-    title: 'Follow-up',
-    subtitle: 'Engage with a specific message',
-    glyph: Lucide.MESSAGES_SQUARE,
-    task: { title: 'Engagement Message', lines: ['Please review the draft.', 'Any changes? (Yes/No)'] },
-    goal: ['Human review before the', 'letter goes out.'],
-    color: '#f59e0b',
+    layer: 3,
+    kind: Kind.AGENT,
+    name: 'Start Writing',
+    glyph: Lucide.BOT,
+    lines: ['Draft the letter', 'from tasks 1 to 3'],
+    color: '#94cc7a',
   },
   {
     id: 'mail',
-    order: 6,
-    kind: NodeKind.TOOL,
-    title: 'Send Mail Assistant',
+    order: 5,
+    layer: 4,
+    kind: Kind.TOOL,
+    name: 'Send Mail',
     glyph: Lucide.MAIL,
-    task: { title: 'Task Description', lines: ['Email the final letter as', 'a PDF to the new hire.'] },
-    goal: ['Deliver the offer letter', 'to the new hire’s inbox.'],
-    authorize: true,
-    color: '#e879f9',
+    lines: ['Email the letter', 'as a PDF'],
+    color: '#8ab4ff',
   },
   {
     id: 'meeting',
-    order: 7,
-    kind: NodeKind.TOOL,
-    title: 'Meeting Assistant',
+    order: 6,
+    layer: 4,
+    kind: Kind.TOOL,
+    name: 'Meeting',
     glyph: Lucide.CALENDAR,
-    task: { title: 'Task Description', lines: ['Book a welcome call for', 'the new hire’s first day.'] },
-    goal: ['Onboarding on the', 'calendar.'],
-    authorize: true,
-    color: '#818cf8',
+    lines: ['Book a welcome', 'call for day one'],
+    color: '#8ab4ff',
+  },
+  {
+    id: 'telegram',
+    order: 7,
+    layer: 4,
+    kind: Kind.TOOL,
+    name: 'Telegram',
+    glyph: Lucide.SEND,
+    lines: ['Tell the recruiter', 'it has gone out'],
+    color: '#8ab4ff',
+    saving: true,
   },
 ];
 
@@ -179,356 +166,244 @@ const edges: [string, string][] = [
   ['collect', 'search'],
   ['ocr', 'write'],
   ['search', 'write'],
-  ['write', 'review'],
-  ['review', 'mail'],
-  ['review', 'meeting'],
+  ['write', 'mail'],
+  ['write', 'meeting'],
+  ['write', 'telegram'],
 ];
 
 const wideLayout: Layout = {
-  collect: { x: 116, y: 279 },
-  ocr: { x: 332, y: 194 },
-  search: { x: 332, y: 400 },
-  write: { x: 548, y: 297 },
-  review: { x: 764, y: 279 },
-  mail: { x: 980, y: 150 },
-  meeting: { x: 980, y: 378 },
+  collect: { x: 56, y: 352 },
+  ocr: { x: 262, y: 277 },
+  search: { x: 262, y: 427 },
+  write: { x: 468, y: 352 },
+  mail: { x: 674, y: 210 },
+  meeting: { x: 674, y: 352 },
+  telegram: { x: 674, y: 494 },
 };
 
 const narrowLayout: Layout = {
-  collect: { x: 26, y: 249 },
-  ocr: { x: 216, y: 164 },
-  search: { x: 216, y: 370 },
-  write: { x: 406, y: 267 },
+  collect: { x: 24, y: 176 },
+  ocr: { x: 214, y: 106 },
+  search: { x: 214, y: 246 },
+  write: { x: 404, y: 176 },
 };
 
-const nodeById = new Map(nodes.map((node) => [node.id, node]));
+const taskById = new Map(tasks.map((task) => [task.id, task]));
 
-function heightOf(node: FlowNode): number {
-  if (node.kind === NodeKind.AGENT) return AGENT_HEIGHT;
-  return TOOL_HEIGHT + (node.authorize ? AUTHORIZE_HEIGHT : 0);
-}
-
-/** An original robot avatar standing in for the product's agent portraits. */
-function Avatar({ x, y }: Pt) {
-  return (
-    <g>
-      <circle cx={x} cy={y} r={17} fill="#ecfdf5" stroke="#fff" strokeWidth={2} />
-      <circle cx={x} cy={y} r={18} fill="none" stroke="#a7f3d0" />
-      <line x1={x} y1={y - 12} x2={x} y2={y - 8} stroke="#94a3b8" strokeWidth={1.2} />
-      <circle cx={x} cy={y - 12.5} r={1.6} fill="#14b8a6" />
-      <rect x={x - 8} y={y - 8} width={16} height={12} rx={4} fill="#e2e8f0" stroke="#94a3b8" strokeWidth={0.8} />
-      <rect x={x - 6} y={y - 6} width={12} height={7} rx={2.5} fill="#1e293b" />
-      <circle cx={x - 3} cy={y - 2.5} r={1.3} fill="#5eead4" />
-      <circle cx={x + 3} cy={y - 2.5} r={1.3} fill="#5eead4" />
-      <rect x={x - 6} y={y + 5} width={12} height={7} rx={3} fill="#cbd5e1" />
-      <rect x={x + 5} y={y - 13} width={9} height={7} rx={2} fill="#14b8a6" />
-      <path d={`M${x + 7} ${y - 6}l-1.5 2.5 3-2.5z`} fill="#14b8a6" />
-    </g>
-  );
-}
-
-function AddButton({ x, y }: Pt) {
-  return (
-    <g>
-      <circle cx={x} cy={y} r={8} fill={ADD} />
-      <path d={`M${x - 4} ${y}h8M${x} ${y - 4}v8`} stroke="#fff" strokeWidth={1.6} strokeLinecap="round" />
-    </g>
-  );
-}
-
-function Lines({ x, y, lines }: LinesProps) {
-  return (
-    <>
-      {lines.map((line, index) => (
-        <text key={line} x={x} y={y + index * 12} fontSize={9} fill={MUTED}>
-          {line}
-        </text>
-      ))}
-    </>
-  );
-}
-
-/** An agent task: the green header with its avatar and order, then the task and its goal. */
-function AgentCard({ x, y, node, w }: CardProps) {
-  const h = AGENT_HEIGHT;
-  return (
-    <g>
-      <rect x={x} y={y + 3} width={w} height={h} rx={8} fill="rgba(15,23,42,0.06)" />
-      <rect x={x} y={y} width={w} height={h} rx={8} fill="#fff" stroke={LINE} />
-      <path d={`M${x} ${y + 28}V${y + 8}a8 8 0 0 1 8-8h${w - 16}a8 8 0 0 1 8 8V${y + 28}Z`} fill={GREEN} />
-      <text x={x + 42 + (w - 76) / 2} y={y + 18.5} textAnchor="middle" fontSize={10} fontWeight={700} fill="#fff">
-        {node.title}
-      </text>
-      <rect x={x + w - 31} y={y + 7} width={23} height={14} rx={7} fill="#fff" />
-      <text x={x + w - 19.5} y={y + 17.5} textAnchor="middle" fontSize={8.5} fontWeight={700} fill={GREEN}>
-        #{node.order}
-      </text>
-      <Avatar x={x + 24} y={y + 2} />
-      <text x={x + 12} y={y + 46} fontSize={9.5} fontWeight={700} fill={INK}>
-        {node.task.title}
-      </text>
-      <Lines x={x + 12} y={y + 59} lines={node.task.lines} />
-      <text x={x + 12} y={y + 89} fontSize={9.5} fontWeight={700} fill={INK}>
-        Outcome goals
-      </text>
-      <Lines x={x + 12} y={y + 102} lines={node.goal} />
-    </g>
-  );
-}
-
-/** A tool task: the blue outline, its icon and order, the task and goal in an inset, and Authorize where it needs Google. */
-function ToolCard({ x, y, node, w }: CardProps) {
-  const h = heightOf(node);
-  return (
-    <g>
-      <rect x={x} y={y + 3} width={w} height={h} rx={8} fill="rgba(15,23,42,0.06)" />
-      <rect x={x} y={y} width={w} height={h} rx={8} fill="#fff" stroke={TOOL_EDGE} strokeWidth={1.5} />
-      {node.glyph ? <EditorIcon x={x + 11} y={y + 10} glyph={node.glyph} size={13} color={INK} /> : null}
-      <text x={x + 30} y={y + 20} fontSize={10} fontWeight={700} fill={INK}>
-        {node.title}
-      </text>
-      {node.subtitle ? (
-        <text x={x + 30} y={y + 31} fontSize={8} fill={MUTED}>
-          {node.subtitle}
-        </text>
-      ) : null}
-      <text x={x + w - 12} y={y + 20} textAnchor="end" fontSize={8.5} fill={FAINT}>
-        #{node.order}
-      </text>
-      <rect x={x + 8} y={y + 40} width={w - 16} height={112} rx={6} fill={SOFT} stroke="#eef0f4" />
-      <circle cx={x + 19} cy={y + 55} r={5} fill={INFO} />
-      <text x={x + 19} y={y + 57.8} textAnchor="middle" fontSize={7.5} fontWeight={700} fill="#fff">
-        i
-      </text>
-      <text x={x + 29} y={y + 58} fontSize={9.5} fontWeight={700} fill={INK}>
-        {node.task.title}
-      </text>
-      <Lines x={x + 29} y={y + 71} lines={node.task.lines} />
-      <line x1={x + 16} y1={y + 94} x2={x + w - 16} y2={y + 94} stroke="#eef0f4" />
-      <EditorIcon x={x + 13} y={y + 101} glyph={Lucide.TROPHY} size={11} color={GOAL} />
-      <text x={x + 29} y={y + 110} fontSize={9.5} fontWeight={700} fill={INK}>
-        Outcome goals
-      </text>
-      <Lines x={x + 29} y={y + 123} lines={node.goal} />
-      {node.authorize ? (
-        <g>
-          <rect x={x + 8} y={y + 158} width={w - 16} height={24} rx={4} fill={AUTHORIZE} />
-          <text x={x + w / 2} y={y + 173.5} textAnchor="middle" fontSize={9.5} fontWeight={700} fill="#fff">
-            <tspan fontWeight={800}>G</tspan>
-            {'  Authorize'}
-          </text>
-        </g>
-      ) : null}
-    </g>
-  );
-}
-
-/** The workflow: edges coloured by the task they leave, with a handle dot at each end, under the cards. */
-function Graph({ layout, w }: GraphProps) {
-  const placed = nodes.filter((node) => layout[node.id]);
-  return (
-    <g>
-      {edges.map(([sourceId, targetId]) => {
-        const source = nodeById.get(sourceId);
-        const target = nodeById.get(targetId);
-        const from = layout[sourceId];
-        const to = layout[targetId];
-        if (!source || !target || !from || !to) return null;
-        const start = { x: from.x + w, y: from.y + heightOf(source) / 2 };
-        const end = { x: to.x, y: to.y + heightOf(target) / 2 };
-        return (
-          <g key={`${sourceId}-${targetId}`}>
-            <path d={wirePath(start, end)} fill="none" stroke={source.color} strokeWidth={2} />
-            <circle cx={start.x + 2} cy={start.y} r={3.5} fill={source.color} />
-            <circle cx={end.x - 2} cy={end.y} r={3.5} fill={source.color} />
-          </g>
-        );
-      })}
-      {placed.map((node) => {
-        const at = layout[node.id] ?? { x: 0, y: 0 };
-        const Card = node.kind === NodeKind.AGENT ? AgentCard : ToolCard;
-        return (
-          <g key={node.id}>
-            <Card x={at.x} y={at.y} node={node} w={w} />
-            <AddButton x={at.x + w + 12} y={at.y + heightOf(node) - 4} />
-          </g>
-        );
-      })}
-    </g>
-  );
-}
-
-/** The minimap: every task as a block in its colour, inside the viewport. */
-function MiniMap({ x, y, w, h, layout, nodeWidth }: MiniMapProps) {
-  const placed = nodes.flatMap((node) => {
-    const at = layout[node.id];
-    return at ? [{ node, at }] : [];
-  });
-  const left = Math.min(...placed.map(({ at }) => at.x));
-  const right = Math.max(...placed.map(({ at }) => at.x + nodeWidth));
-  const top = Math.min(...placed.map(({ at }) => at.y));
-  const bottom = Math.max(...placed.map(({ node, at }) => at.y + heightOf(node)));
-  const scale = Math.min((w - 36) / (right - left), (h - 32) / (bottom - top));
-  const offsetX = x + (w - (right - left) * scale) / 2;
-  const offsetY = y + (h - (bottom - top) * scale) / 2;
-  return (
-    <g>
-      <rect x={x} y={y} width={w} height={h} rx={6} fill="#f3f4f6" stroke={LINE} />
-      <rect x={x + 8} y={y + 8} width={w - 16} height={h - 16} fill="#fff" />
-      {placed.map(({ node, at }) => (
-        <rect
-          key={node.id}
-          x={offsetX + (at.x - left) * scale}
-          y={offsetY + (at.y - top) * scale}
-          width={nodeWidth * scale}
-          height={heightOf(node) * scale}
-          fill={node.color}
-        />
-      ))}
-    </g>
-  );
-}
-
-/** Zoom in, zoom out, and Auto Layout. */
-function Controls({ x, y, w }: ControlsProps) {
-  return (
-    <g>
-      <rect x={x} y={y} width={w} height={40} rx={8} fill="#fff" stroke={LINE} />
-      <circle cx={x + 20} cy={y + 20} r={12} fill="#fff" stroke="#d1d5db" />
-      <EditorIcon x={x + 13} y={y + 13} glyph={Lucide.PLUS} size={14} color={INK} />
-      <circle cx={x + 50} cy={y + 20} r={12} fill="#fff" stroke="#d1d5db" />
-      <EditorIcon x={x + 43} y={y + 13} glyph={Lucide.MINUS} size={14} color={INK} />
-      <EditorIcon x={x + 72} y={y + 12} glyph={Lucide.LAYOUT_GRID} size={16} color={INK} />
-      <text x={x + 94} y={y + 24.5} fontSize={11.5} fill={INK}>
-        Auto Layout
-      </text>
-    </g>
-  );
-}
-
-/** Google's four-colour G, for the rail tile. */
-function GoogleMark({ x, y }: Pt) {
-  const r = 7;
-  const point = (degrees: number) => {
-    const angle = (degrees * Math.PI) / 180;
-    return `${x + r * Math.cos(angle)} ${y - r * Math.sin(angle)}`;
-  };
-  const arc = (from: number, to: number) => `M${point(from)}A${r} ${r} 0 0 0 ${point(to)}`;
-  return (
-    <g fill="none" strokeWidth={3}>
-      <path d={arc(45, 150)} stroke="#ea4335" />
-      <path d={arc(150, 210)} stroke="#fbbc05" />
-      <path d={arc(210, 320)} stroke="#34a853" />
-      <path d={`${arc(320, 360)}H${x + 0.5}`} stroke="#4285f4" />
-    </g>
-  );
-}
-
-function RailTile({ x, y, glyph }: RailTileProps) {
-  return (
-    <g>
-      <rect x={x} y={y} width={44} height={44} rx={8} fill="#fff" stroke={LINE} />
-      {glyph ? <EditorIcon x={x + 12} y={y + 12} glyph={glyph} size={20} color={INK} /> : <GoogleMark x={x + 22} y={y + 22} />}
-    </g>
-  );
-}
-
-function RailLabel({ x, y, label }: RailLabelProps) {
-  return (
-    <text x={x} y={y} textAnchor="middle" fontSize={12} fontWeight={500} fill={FAINT}>
-      {label}
-    </text>
-  );
-}
-
-function Button({ x, y, w, label, glyph, filled, trailing }: ButtonProps) {
-  const color = filled ? '#fff' : INK;
-  return (
-    <g>
-      <rect x={x} y={y} width={w} height={34} rx={8} fill={filled ?? '#fff'} stroke={filled ? 'none' : '#d1d5db'} />
-      {glyph ? <EditorIcon x={x + 12} y={y + 10} glyph={glyph} size={14} color={color} /> : null}
-      <text x={x + (glyph ? 32 : 16)} y={y + 21.5} fontSize={12.5} fontWeight={filled ? 600 : 500} fill={color}>
-        {label}
-      </text>
-      {trailing ? <EditorIcon x={x + w - 22} y={y + 11} glyph={trailing} size={12} color={color} /> : null}
-    </g>
-  );
-}
-
-/** The assistant's mark beside its name. */
-function Sparkle({ x, y }: Pt) {
+function Wire({ from, to, color, dashed }: WireProps) {
+  const k = Math.max(36, Math.abs(to.x - from.x) * 0.5);
   return (
     <path
-      d={`M${x} ${y - 11}C${x + 1.5} ${y - 2} ${x + 2} ${y - 1.5} ${x + 11} ${y}C${x + 2} ${y + 1.5} ${x + 1.5} ${y + 2} ${x} ${y + 11}C${x - 1.5} ${y + 2} ${x - 2} ${y + 1.5} ${x - 11} ${y}C${x - 2} ${y - 1.5} ${x - 1.5} ${y - 2} ${x} ${y - 11}Z`}
-      fill="#6d83f2"
+      d={`M${from.x} ${from.y}C${from.x + k} ${from.y} ${to.x - k} ${to.y} ${to.x} ${to.y}`}
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeDasharray={dashed ? '6 6' : undefined}
+      opacity={dashed ? 0.6 : 0.95}
     />
   );
 }
 
+/** A task: its name and run-order number above the card, the kind disc and the instruction inside. */
+function TaskCard({ x, y, task, w }: CardProps) {
+  const style = KIND_STYLE[task.kind];
+  const stroke = task.saving ? PAPER : style.stroke;
+  return (
+    <g opacity={task.saving ? 0.72 : 1}>
+      <text x={x + 2} y={y - 10} className="v-small" fill={PAPER}>
+        {task.name}
+      </text>
+      <text x={x + w} y={y - 10} textAnchor="end" className="v-kicker" fill={task.saving ? FOG : style.stroke}>
+        #{task.order}
+      </text>
+      <rect
+        x={x}
+        y={y}
+        width={w}
+        height={CARD_HEIGHT}
+        rx={12}
+        fill={task.saving ? NODE : style.fill}
+        stroke={stroke}
+        strokeWidth={1.5}
+        strokeDasharray={task.saving ? '6 5' : undefined}
+      />
+      <circle cx={x + 24} cy={y + 26} r={14} fill={style.stroke} fillOpacity={0.16} />
+      <EditorIcon x={x + 16} y={y + 18} glyph={task.glyph} size={16} color={style.stroke} />
+      <text x={x + 46} y={y + 31} className="v-kicker" fill={FOG}>
+        {task.saving ? 'saving…' : task.kind}
+      </text>
+      <text x={x + 14} y={y + 62} className="v-small" fill={PAPER}>
+        {task.lines[0]}
+      </text>
+      <text x={x + 14} y={y + 81} className="v-small" fill={FOG}>
+        {task.lines[1]}
+      </text>
+    </g>
+  );
+}
+
+function Cursor({ x, y }: Pt) {
+  return (
+    <path
+      transform={`translate(${x} ${y})`}
+      d="M0 0L0 22L6 16.5L10.5 26L14.5 24.2L10 14.8L17.5 14.8Z"
+      fill={PAPER}
+      stroke={INK}
+      strokeWidth="1.4"
+      strokeLinejoin="round"
+    />
+  );
+}
+
+/** The workflow: wires in the colour of the task they leave, ports at both ends, then the cards. */
+function Graph({ layout, w }: GraphProps) {
+  return (
+    <g>
+      {edges.map(([sourceId, targetId]) => {
+        const source = taskById.get(sourceId);
+        const target = taskById.get(targetId);
+        const from = layout[sourceId];
+        const to = layout[targetId];
+        if (!source || !target || !from || !to) return null;
+        const start = { x: from.x + w, y: from.y + CARD_HEIGHT / 2 };
+        const end = { x: to.x, y: to.y + CARD_HEIGHT / 2 };
+        return (
+          <g key={`${sourceId}-${targetId}`}>
+            <Wire from={start} to={end} color={source.color} dashed={target.saving} />
+            <circle cx={start.x} cy={start.y} r={5.5} fill={source.color} />
+            <circle cx={end.x} cy={end.y} r={5.5} fill={CANVAS} stroke={source.color} strokeWidth={2} opacity={target.saving ? 0.6 : 1} />
+          </g>
+        );
+      })}
+      {tasks.map((task) => {
+        const at = layout[task.id];
+        return at ? <TaskCard key={task.id} x={at.x} y={at.y} task={task} w={w} /> : null;
+      })}
+    </g>
+  );
+}
+
+/** The + under a card, mid-click. */
+function AddClick({ x, y }: Pt) {
+  return (
+    <g>
+      <circle cx={x} cy={y} r={15} fill="none" stroke={SIGNAL} strokeOpacity={0.4} strokeWidth={6} />
+      <circle cx={x} cy={y} r={11} fill={SIGNAL} />
+      <path d={`M${x - 5} ${y}h10M${x} ${y - 5}v10`} stroke={INK} strokeWidth={2} strokeLinecap="round" />
+      <Cursor x={x + 4} y={y + 6} />
+    </g>
+  );
+}
+
+function RunRow({ x, y, w, task }: RowProps) {
+  return (
+    <g opacity={task.saving ? 0.75 : 1}>
+      <circle
+        cx={x + 14}
+        cy={y}
+        r={13}
+        fill={task.saving ? 'none' : PAPER}
+        stroke={task.saving ? PAPER : 'none'}
+        strokeWidth={1.5}
+        strokeDasharray={task.saving ? '4 3' : undefined}
+      />
+      <text x={x + 14} y={y + 4.5} textAnchor="middle" className="v-kicker" fill={task.saving ? PAPER : INK}>
+        {task.order}
+      </text>
+      <circle cx={x + 40} cy={y} r={4} fill={KIND_STYLE[task.kind].stroke} />
+      <text x={x + 52} y={y + 4.5} className="v-small" fill={task.saving ? FOG : PAPER}>
+        {task.name}
+      </text>
+      <text x={x + w} y={y + 4.5} textAnchor="end" className="v-kicker" fill={FOG}>
+        {task.saving ? 'saving' : `layer ${task.layer}`}
+      </text>
+    </g>
+  );
+}
+
+/** The order the backend runs, derived from the edges layer by layer, with the new task already in place. */
+function RunOrder({ x, y, w, h, columns = 1 }: PanelProps) {
+  const inner = w - 40;
+  const column = (inner - (columns - 1) * 28) / columns;
+  const perColumn = Math.ceil(tasks.length / columns);
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={14} fill="#171716" stroke={STROKE} />
+      <text x={x + 20} y={y + 34} className="v-label" fill={PAPER}>
+        Run order
+      </text>
+      <text x={x + w - 20} y={y + 34} textAnchor="end" className="v-kicker" fill={FOG}>
+        from the edges
+      </text>
+      {tasks.map((task, index) => {
+        const col = Math.floor(index / perColumn);
+        const row = index % perColumn;
+        const rx = x + 20 + col * (column + 28);
+        const ry = y + 82 + row * 48;
+        const previous = tasks[index - 1];
+        const newLayer = row > 0 && previous && previous.layer !== task.layer;
+        return (
+          <g key={task.id}>
+            {newLayer ? <line x1={rx} y1={ry - 24} x2={rx + column} y2={ry - 24} stroke={STROKE} /> : null}
+            <RunRow x={rx} y={ry} w={column} task={task} />
+          </g>
+        );
+      })}
+      <rect x={x + 20} y={y + h - 62} width={inner} height={42} rx={21} fill="#262624" />
+      <circle cx={x + 42} cy={y + h - 41} r={10} fill={SIGNAL} />
+      <path d={`M${x + 37} ${y + h - 41}l3.5 3.5 6.5-7`} fill="none" stroke={INK} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <text x={x + 62} y={y + h - 36} className="v-small" fill={PAPER}>
+        Matches the edges on the canvas
+      </text>
+    </g>
+  );
+}
+
+function Pill({ x, y, w, label, glyph }: PillProps) {
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={40} rx={20} fill={NODE} stroke={STROKE} />
+      {glyph ? <EditorIcon x={x + 16} y={y + 12} glyph={glyph} size={16} color={FOG} /> : null}
+      <text x={x + (glyph ? 42 : 20)} y={y + 25} className="v-label" fill={PAPER}>
+        {label}
+      </text>
+    </g>
+  );
+}
+
+function Legend({ x, y }: Pt) {
+  return (
+    <g>
+      <rect x={x} y={y} width={14} height={14} rx={4} fill={KIND_STYLE[Kind.AGENT].fill} stroke={KIND_STYLE[Kind.AGENT].stroke} strokeWidth={2} />
+      <text x={x + 22} y={y + 12} className="v-kicker" fill={PAPER}>
+        agent task
+      </text>
+      <rect x={x + 130} y={y} width={14} height={14} rx={4} fill={KIND_STYLE[Kind.TOOL].fill} stroke={KIND_STYLE[Kind.TOOL].stroke} strokeWidth={2} />
+      <text x={x + 152} y={y + 12} className="v-kicker" fill={PAPER}>
+        tool task
+      </text>
+      <rect x={x + 250} y={y} width={14} height={14} rx={4} fill="none" stroke={PAPER} strokeWidth={1.5} strokeDasharray="3 3" />
+      <text x={x + 272} y={y + 12} className="v-kicker" fill={FOG}>
+        added, saving
+      </text>
+    </g>
+  );
+}
+
 function Wide() {
-  const rail = [
-    { label: 'Info', y: 104, tiles: [Lucide.INFO] },
-    { label: 'Message', y: 180, tiles: [Lucide.MESSAGES_SQUARE, Lucide.UPLOAD] },
-    {
-      label: 'Agents',
-      y: 308,
-      tiles: [Lucide.APP_WINDOW, undefined, Lucide.FILE_TEXT, Lucide.HEADPHONES, Lucide.IMAGE, Lucide.WEBHOOK, Lucide.COPY, Lucide.SEND],
-    },
-  ];
   return (
     <>
-      <rect x={8} y={8} width={1184} height={744} rx={14} fill="#fff" />
-      <g transform="translate(92 72)">
-        <Dots width={1100} height={680} color="#d4d4d8" background="none" />
-      </g>
+      <Dots width={1200} height={760} color="rgba(244,241,232,0.08)" background={CANVAS} />
 
-      {/* Rail of task types */}
-      <path d="M22 8H92V752H22a14 14 0 0 1-14-14V22a14 14 0 0 1 14-14Z" fill={SOFT} />
-      <line x1={92} y1={8} x2={92} y2={752} stroke={LINE} />
-      <EditorIcon x={38} y={30} glyph={Lucide.CHEVRONS_RIGHT} size={20} color={INK} strokeWidth={2.5} />
-      {rail.map((group) => (
-        <g key={group.label}>
-          <RailLabel x={50} y={group.y} label={group.label} />
-          {group.tiles.map((glyph, index) => (
-            <RailTile key={index} x={28} y={group.y + 10 + index * 52} glyph={glyph} />
-          ))}
-        </g>
-      ))}
+      {/* Studio chrome */}
+      <Pill x={40} y={22} w={272} label="Offer Letter Creation VA" />
+      <Pill x={324} y={22} w={154} label="Auto Layout" glyph={Lucide.LAYOUT_GRID} />
 
-      {/* Workspace bar */}
-      <line x1={92} y1={72} x2={1192} y2={72} stroke={LINE} />
-      <EditorIcon x={112} y={33} glyph={Lucide.HOUSE} size={14} color={MUTED} />
-      <text x={132} y={45} fontSize={13} fill={TEXT}>
-        Workspace
-      </text>
-      <EditorIcon x={206} y={34} glyph={Lucide.CHEVRON_RIGHT} size={12} color="#9ca3af" />
-      <EditorIcon x={226} y={33} glyph={Lucide.BOT} size={14} color={MUTED} />
-      <text x={246} y={45} fontSize={13} fill={TEXT}>
-        Assistant Studio
-      </text>
-      <Sparkle x={374} y={40} />
-      <text x={394} y={46} fontSize={15} fill={FAINT}>
-        /
-      </text>
-      <text x={408} y={46} fontSize={15} fontWeight={700} fill={INK}>
-        Offer Letter Creation VA
-      </text>
-      <EditorIcon x={630} y={32} glyph={Lucide.USER_PLUS} size={16} color={INK} />
-      <text x={658} y={45} fontSize={13} fill={INK}>
-        More
-      </text>
-      <EditorIcon x={694} y={35} glyph={Lucide.CHEVRON_DOWN} size={12} color={INK} />
-      <Button x={746} y={23} w={96} label="New Bot" glyph={Lucide.PLUS} />
-      <Button x={852} y={23} w={96} label="Public" filled={PUBLIC} trailing={Lucide.CHEVRON_DOWN} />
-      <Button x={958} y={23} w={104} label="Settings" glyph={Lucide.SETTINGS} />
-      <Button x={1072} y={23} w={104} label="Preview" glyph={Lucide.PLAY} filled="#1f2937" />
+      <Graph layout={wideLayout} w={150} />
+      <AddClick x={604} y={468} />
 
-      {/* The workflow */}
-      <Graph layout={wideLayout} w={176} />
-      <MiniMap x={1004} y={586} w={172} h={106} layout={wideLayout} nodeWidth={176} />
-      <Controls x={1004} y={702} w={172} />
-
-      <rect x={8} y={8} width={1184} height={744} rx={14} fill="none" stroke={LINE} />
+      <Legend x={40} y={716} />
+      <RunOrder x={850} y={130} w={320} h={480} />
     </>
   );
 }
@@ -536,23 +411,14 @@ function Wide() {
 function Narrow() {
   return (
     <>
-      <rect x={8} y={8} width={584} height={744} rx={14} fill="#fff" />
-      <g transform="translate(8 64)">
-        <Dots width={584} height={688} color="#d4d4d8" background="none" />
-      </g>
+      <Dots width={600} height={760} color="rgba(244,241,232,0.08)" background={CANVAS} />
+      <Pill x={24} y={22} w={272} label="Offer Letter Creation VA" />
 
-      <Sparkle x={34} y={36} />
-      <text x={54} y={41} fontSize={14} fontWeight={700} fill={INK}>
-        Offer Letter Creation VA
-      </text>
-      <Button x={478} y={19} w={100} label="Preview" glyph={Lucide.PLAY} filled="#1f2937" />
-      <line x1={8} y1={64} x2={592} y2={64} stroke={LINE} />
+      <Graph layout={narrowLayout} w={160} />
+      <AddClick x={576} y={284} />
 
-      <Graph layout={narrowLayout} w={164} />
-      <MiniMap x={420} y={590} w={156} h={96} layout={wideLayout} nodeWidth={176} />
-      <Controls x={420} y={696} w={156} />
-
-      <rect x={8} y={8} width={584} height={744} rx={14} fill="none" stroke={LINE} />
+      <RunOrder x={24} y={388} w={552} h={316} columns={2} />
+      <Legend x={24} y={724} />
     </>
   );
 }
@@ -560,7 +426,7 @@ function Narrow() {
 export function IgotVisual() {
   return (
     <VizFrame
-      label="Reconstruction of iGOT.ai Studio's agent builder with the Offer Letter Creation VA workflow. A rail lists task types under Info, Message, and Agents. On a dotted canvas, a Follow-up collects the candidate's details, then fans out to a File upload OCR task that reads the job description and a Search online agent that finds the company's letter template. Both feed a Start Writing agent, a second Follow-up asks for review, and the flow ends in a Send Mail Assistant and a Meeting Assistant, each with an Authorize button for Google. Agent tasks have green headers and avatars, tool tasks blue outlines; each card shows its number in the execution order, edges take the colour of the task they leave, and a minimap and zoom and Auto Layout controls sit in the corner."
+      label="Reconstruction of iGOT.ai Studio's agent builder for an offer-letter assistant. A Follow-up collects the details, File upload OCR and a Search online agent run next, Start Writing drafts the letter, and Send Mail and Meeting tasks follow. Agent tasks ring green and tool tasks blue, and each card shows its number in the run order. A click on the plus under Start Writing adds a Telegram task at once, dashed while it saves. A Run order panel, derived from the edges layer by layer, lists all seven tasks with the new one already in place and confirms it matches the edges on the canvas."
       wide={<Wide />}
       narrow={<Narrow />}
     />

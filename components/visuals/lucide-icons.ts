@@ -1,9 +1,8 @@
 import type { EditorGlyph } from './editor-icons';
 
 /**
- * Lucide icons as the reconstructed interfaces use them (cocoding.ai and
- * iGOT.ai Studio), flattened to paths so `EditorIcon` can draw them inside an
- * SVG reconstruction.
+ * Lucide icons as the reconstructed interfaces use them, flattened to paths so
+ * `EditorIcon` can draw them inside an SVG reconstruction.
  */
 
 const lucide = (paths: readonly string[]): EditorGlyph => ({ box: 24, strokeWidth: 2, paths });
@@ -98,23 +97,9 @@ export const Lucide = {
   SETTINGS_2: lucide(['M20 7h-9', 'M14 17H5', 'M14 17a3 3 0 1 0 6 0 3 3 0 1 0-6 0', 'M4 7a3 3 0 1 0 6 0 3 3 0 1 0-6 0']),
   CHECK: lucide(['M20 6 9 17l-5-5']),
   MESSAGE_SQUARE_TEXT: lucide(['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', 'M13 8H7', 'M17 12H7']),
-  CHEVRONS_RIGHT: lucide(['m6 17 5-5-5-5', 'm13 17 5-5-5-5']),
-  HOUSE: lucide(['M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8', 'M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z']),
   BOT: lucide(['M12 8V4H8', 'M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2Z', 'M2 14h2', 'M20 14h2', 'M15 13v2', 'M9 13v2']),
-  USER_PLUS: lucide(['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M5 7a4 4 0 1 0 8 0 4 4 0 1 0 -8 0', 'M19 8L19 14', 'M22 11L16 11']),
-  PLUS: lucide(['M5 12h14', 'M12 5v14']),
-  PLAY: lucide(['M6 3L20 12L6 21L6 3Z']),
-  INFO: lucide(['M2 12a10 10 0 1 0 20 0 10 10 0 1 0 -20 0', 'M12 16v-4', 'M12 8h.01']),
   MESSAGES_SQUARE: lucide(['M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z', 'M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1']),
   UPLOAD: lucide(['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M17 8L12 3L7 8', 'M12 3L12 15']),
-  APP_WINDOW: lucide(['M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2Z', 'M10 4v4', 'M2 8h20', 'M6 4v4']),
-  FILE_TEXT: lucide(['M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z', 'M14 2v4a2 2 0 0 0 2 2h4', 'M10 9H8', 'M16 13H8', 'M16 17H8']),
-  HEADPHONES: lucide(['M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3']),
-  IMAGE: lucide(['M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z', 'M7 9a2 2 0 1 0 4 0 2 2 0 1 0 -4 0', 'm21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21']),
-  WEBHOOK: lucide(['M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2', 'm6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06', 'm12 6 3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8']),
-  COPY: lucide(['M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2Z', 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2']),
   MAIL: lucide(['m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7', 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2Z']),
   CALENDAR: lucide(['M8 2v4', 'M16 2v4', 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z', 'M3 10h18']),
-  TROPHY: lucide(['M6 9H4.5a2.5 2.5 0 0 1 0-5H6', 'M18 9h1.5a2.5 2.5 0 0 0 0-5H18', 'M4 22h16', 'M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22', 'M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22', 'M18 2H6v7a6 6 0 0 0 12 0V2Z']),
-  MINUS: lucide(['M5 12h14']),
 } as const;
