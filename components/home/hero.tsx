@@ -13,7 +13,7 @@ export function Hero() {
   return (
     <section aria-labelledby="hero-title" className="hero canvas-dots text-ink">
       <GraphCanvas model={model}>
-        <div className="shell grid-12 gap-y-8 pt-[calc(var(--header-h)+clamp(1.5rem,4.5vh,3.5rem))]">
+        <div className="shell grid-12 gap-y-8 pt-[calc(var(--header-h)+clamp(1rem,3svh,3.5rem))]">
           <div className="col-span-4 md:col-span-12 lg:col-span-8" data-headline>
             <AvailabilityChip
               className="intro-fade flex items-center gap-2.5 type-small text-graphite lg:hidden"
@@ -32,7 +32,7 @@ export function Hero() {
                 </span>
               ))}
             </p>
-            <h1 id="hero-title" className="type-hero hero-title mt-5 lg:mt-7">
+            <h1 id="hero-title" className="type-hero hero-title mt-5">
               {headlineLines.map((line, index) => (
                 <span key={line} className="intro-line">
                   <span style={vars({ 'intro-delay': `${headlineLineDelay(index)}ms` })}>

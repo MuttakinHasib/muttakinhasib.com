@@ -41,7 +41,7 @@
    One family (Archivo) with width doing the work: display is set
    wide, reading text at normal width. Mono is for identifiers only. */
 @utility type-hero {
-  font-size: clamp(2.6rem, 1rem + 5vw, 6rem);
+  font-size: var(--fs-hero);
   line-height: 0.94;
   letter-spacing: -0.04em;
   font-weight: 470;
@@ -49,7 +49,7 @@
 }
 
 @utility type-display {
-  font-size: clamp(2.3rem, 1.1rem + 4.2vw, 5.4rem);
+  font-size: var(--fs-display);
   line-height: 0.96;
   letter-spacing: -0.035em;
   font-weight: 460;
@@ -57,7 +57,7 @@
 }
 
 @utility type-title {
-  font-size: clamp(1.75rem, 1.1rem + 2.1vw, 3rem);
+  font-size: var(--fs-title);
   line-height: 1.02;
   letter-spacing: -0.025em;
   font-weight: 480;
@@ -146,6 +146,22 @@
     --gutter: clamp(1rem, 0.4rem + 2.6vw, 3rem);
     --col-gap: clamp(1rem, 0.6rem + 1vw, 1.5rem);
     --header-h: 4rem;
+
+    /* Display sizes grow with the viewport's width but never past a share of its
+       height, so a short laptop screen gets the same composition as a tall
+       monitor instead of near-maximum headings. Reading sizes stay fixed. */
+    --fs-hero: clamp(2.6rem, min(1rem + 5vw, 8.4svh), 6rem);
+    --fs-display: clamp(2.3rem, min(1.1rem + 4.2vw, 7svh), 5.4rem);
+    --fs-feature: clamp(2.2rem, min(1.1rem + 3.4vw, 6svh), 4.4rem);
+    --fs-title: clamp(1.75rem, min(1.1rem + 2.1vw, 4.6svh), 3rem);
+    --fs-figure-xl: clamp(5rem, min(2.5rem + 9vw, 15svh), 11.5rem);
+    --fs-figure: clamp(2.25rem, min(1.6rem + 2vw, 4.4svh), 3.25rem);
+    --fs-figure-sm: clamp(2.5rem, min(2rem + 1.6vw, 4.2svh), 3.5rem);
+
+    /* Section rhythm follows the same rule: generous on tall screens, tighter on
+       a short laptop so a section's content isn't framed by half-empty screens. */
+    --space-section: clamp(4.5rem, min(3rem + 6vw, 12svh), 9rem);
+    --space-section-sm: clamp(3.5rem, min(2.5rem + 4.5vw, 9svh), 7rem);
     color-scheme: light;
     -webkit-tap-highlight-color: transparent;
   }
@@ -658,11 +674,11 @@
     .graph-grid {
       grid-template-columns:
         minmax(10rem, 12.5rem) minmax(10.5rem, 12.5rem) minmax(11rem, 13.5rem)
-        minmax(17rem, 21rem);
+        minmax(17rem, 28rem);
       justify-content: space-between;
       align-items: center;
       gap: 0 2rem;
-      padding-block: 3.25rem 1.5rem;
+      padding-block: clamp(1.5rem, 3svh, 3.25rem) 1.5rem;
     }
 
     .graph-col {
@@ -738,9 +754,17 @@
     border-radius: var(--radius-node);
   }
 
+  /* Tall enough for every selection at the card's full width, so picking a node
+     never resizes the row and the centred node columns stay where they are. */
   @media (width >= 64rem) {
     .graph-inspector {
-      min-height: 19.5rem;
+      min-height: 24.5rem;
+    }
+
+    .graph-inspector .trace-chip {
+      min-height: 2rem;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.75rem;
     }
   }
 
@@ -1282,7 +1306,7 @@
 
   /* ───────────────────────── Selected work ───────────────────────── */
   .feature {
-    padding-block: clamp(4.5rem, 3rem + 6vw, 9rem);
+    padding-block: var(--space-section);
     overflow: clip;
   }
 
@@ -1302,13 +1326,21 @@
     background: var(--color-surface);
   }
 
-  .feature .feature-title {
-    font-size: clamp(2.2rem, 1.1rem + 3.4vw, 4.4rem);
+  /* Titles that share their row with a visual step down to the feature size;
+     the full-width stage and built-led titles keep the display size. */
+  .feature-split-dark,
+  .feature-visual-first,
+  .feature-system {
+    --fs-display: var(--fs-feature);
   }
 
-  .feature-stage .feature-title,
-  .feature-built-led .feature-title {
-    font-size: clamp(2.3rem, 1.1rem + 4.2vw, 5.4rem);
+  /* Full-width 1200×760 reconstructions stay on one screen: the width is capped
+     so the height never exceeds the viewport below the header. The cocoding.ai
+     case study hero is the live workspace, which sizes itself. */
+  .feature-stage .feature-visual,
+  .cs-hero-visual:has(.viz) {
+    max-width: calc((100svh - var(--header-h) - 3rem) * 30 / 19);
+    margin-inline: auto;
   }
 
   .feature-title-link {
@@ -1418,7 +1450,7 @@
   }
 
   .feature-metric-value {
-    font-size: clamp(2.25rem, 1.6rem + 2vw, 3.25rem);
+    font-size: var(--fs-figure);
   }
 
   [data-theme="dark"] .feature-metric-value {
@@ -1460,7 +1492,7 @@
 
   /* ───────────────────────── Impact ───────────────────────── */
   .impact {
-    padding-block: clamp(5rem, 3rem + 7vw, 10rem);
+    padding-block: var(--space-section);
   }
 
   .impact-grid {
@@ -1482,7 +1514,7 @@
 
   .impact-lead-value {
     display: block;
-    font-size: clamp(5rem, 2.5rem + 9vw, 11.5rem);
+    font-size: var(--fs-figure-xl);
     line-height: 0.82;
   }
 
@@ -1506,7 +1538,7 @@
 
   .impact-support-value {
     display: block;
-    font-size: clamp(2.5rem, 2rem + 1.6vw, 3.5rem);
+    font-size: var(--fs-figure-sm);
   }
 
   .impact-source {
@@ -1535,7 +1567,7 @@
 
   /* ───────────────────────── Capabilities ───────────────────────── */
   .capabilities {
-    padding-block: clamp(5rem, 3rem + 6vw, 9rem);
+    padding-block: var(--space-section);
     background: var(--color-surface);
   }
 
@@ -1630,7 +1662,7 @@
 
   /* ───────────────────────── About intro ───────────────────────── */
   .about-intro {
-    padding-block: clamp(5rem, 3rem + 6vw, 9rem);
+    padding-block: var(--space-section);
   }
 
   .teams-diagram svg {
@@ -1653,7 +1685,7 @@
 
   /* ───────────────────────── Contact (closing section) ───────────────────────── */
   .contact {
-    padding-block: clamp(4.5rem, 3rem + 6vw, 9rem) 2rem;
+    padding-block: var(--space-section) 2rem;
   }
 
   .contact-graph {
@@ -1717,8 +1749,10 @@
     animation: port-ping 1.8s var(--ease-out) 3;
   }
 
+  /* Wide enough for "Have a complex problem" on one line, so the balanced
+     wrap reads as two phrases instead of stranding "problem". */
   .contact-title {
-    max-width: 14ch;
+    max-width: 18ch;
   }
 
   .contact-email {
@@ -1866,7 +1900,7 @@
   }
 
   .cs-section {
-    padding-block: clamp(3.5rem, 2.5rem + 4vw, 6.5rem);
+    padding-block: var(--space-section-sm);
     border-top: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
   }
 
@@ -2070,7 +2104,7 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    padding-block: clamp(3.5rem, 2.5rem + 5vw, 7rem);
+    padding-block: var(--space-section-sm);
   }
 
   .cs-next-link .type-display {
@@ -3849,7 +3883,7 @@
 
   .other-work {
     margin-top: clamp(4rem, 3rem + 5vw, 8rem);
-    padding-block: clamp(4rem, 3rem + 4vw, 7rem);
+    padding-block: var(--space-section-sm);
     background: var(--color-surface);
   }
 
@@ -3860,7 +3894,7 @@
 
   /* ───────────────────────── About page ───────────────────────── */
   .about-principles {
-    padding-block: clamp(4rem, 3rem + 5vw, 8rem);
+    padding-block: var(--space-section-sm);
     background: var(--color-surface);
   }
 
@@ -3895,7 +3929,7 @@
 
   .about-experience,
   .about-skills {
-    padding-block: clamp(4rem, 3rem + 5vw, 8rem);
+    padding-block: var(--space-section-sm);
   }
 
   .about-skills {

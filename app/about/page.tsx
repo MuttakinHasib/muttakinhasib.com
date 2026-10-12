@@ -143,7 +143,7 @@ export default function AboutPage() {
           <div className="shell grid-12 gap-y-10">
             <h2
               id="experience-title"
-              className="type-display col-span-4 md:col-span-12 lg:col-span-4"
+              className="type-display col-span-4 md:col-span-12 lg:sticky lg:top-[calc(var(--header-h)+2rem)] lg:col-span-4 lg:self-start"
             >
               Experience
             </h2>
