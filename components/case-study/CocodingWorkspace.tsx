@@ -716,6 +716,14 @@ function Explorer({ files, open, fresh, onOpen }: ExplorerProps) {
 function CodeView({ path, terminal }: CodeViewProps) {
   const lines = SOURCES[path] ?? [];
   const name = path.split('/').at(-1) ?? path;
+  const outputRef = useRef<HTMLDivElement>(null);
+
+  // Keep the latest line in view, as a terminal does.
+  useEffect(() => {
+    const output = outputRef.current;
+    if (output) output.scrollTo({ top: output.scrollHeight, behavior: 'smooth' });
+  }, [terminal]);
+
   return (
     <div className="cw-code-view">
       <div className="cw-tabs">
@@ -745,7 +753,7 @@ function CodeView({ path, terminal }: CodeViewProps) {
           <span>Terminal</span>
           <span className="cw-connected">Connected</span>
         </div>
-        <div className="cw-output-lines" aria-live="polite">
+        <div className="cw-output-lines" ref={outputRef} aria-live="polite">
           {terminal.length === 0 ? <p className="cw-dim">Waiting for the first command...</p> : null}
           {terminal.map((line) => (
             <p key={line.id} data-tone={line.tone}>

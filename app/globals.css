@@ -3361,11 +3361,14 @@
     display: grid;
     gap: 0.15rem;
     max-height: 6.5rem;
+    padding-right: 0.35rem;
     overflow-y: auto;
     font-family: var(--font-mono);
     font-size: 0.72rem;
     font-stretch: 87.5%;
     color: var(--c-muted);
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 255 255 / 0.15) transparent;
   }
 
   .cw-output-lines [data-tone="command"] {
