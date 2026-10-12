@@ -16,13 +16,6 @@ export interface BusWire {
   gutterX: number;
 }
 
-export interface ChannelWire {
-  from: Point;
-  to: Point;
-  /** The height of the clear lane the wire runs along, above everything it must not cross. */
-  channelY: number;
-}
-
 export const Port = {
   LEFT: 'left',
   RIGHT: 'right',
@@ -75,22 +68,6 @@ export function busWire({ from, to, gutterX }: BusWire): string {
     `C${round(from.x)} ${round(drop + turn)} ${round(gutterX)} ${round(drop)} ${round(gutterX)} ${round(drop + turn * 1.5)}`,
     `L${round(gutterX)} ${round(to.y - turn)}`,
     `C${round(gutterX)} ${round(to.y - 4)} ${round(gutterX + 4)} ${round(to.y)} ${round(to.x)} ${round(to.y)}`,
-  ].join('');
-}
-
-/**
- * Channel wire: rises out of a port into a clear lane, runs along it, and
- * settles into the target. Lets a wire cross a crowded graph without passing
- * behind its nodes.
- */
-export function channelWire({ from, to, channelY }: ChannelWire): string {
-  const rise = 96;
-  const settle = Math.min(96, Math.max(0, (to.x - from.x - rise) / 2));
-  return [
-    `M${round(from.x)} ${round(from.y)}`,
-    `C${round(from.x + rise * 0.6)} ${round(from.y)} ${round(from.x + rise * 0.4)} ${round(channelY)} ${round(from.x + rise)} ${round(channelY)}`,
-    `L${round(to.x - settle)} ${round(channelY)}`,
-    `C${round(to.x - settle * 0.4)} ${round(channelY)} ${round(to.x - settle * 0.6)} ${round(to.y)} ${round(to.x)} ${round(to.y)}`,
   ].join('');
 }
 

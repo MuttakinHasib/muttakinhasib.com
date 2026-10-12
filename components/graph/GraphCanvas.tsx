@@ -13,7 +13,7 @@ import {
   useState,
 } from 'react';
 import { vars } from '@/lib/css';
-import { type Box, busWire, channelWire, clamp, horizontalWire, Port, portPoint, verticalWire } from './geometry';
+import { type Box, busWire, clamp, horizontalWire, Port, portPoint, verticalWire } from './geometry';
 import { edgeKey, neighbours, plan } from './planner';
 import { type GraphModel, type GraphNodeModel, NodeKind } from './types';
 
@@ -72,6 +72,8 @@ const PULSE_STEP = 170;
 const ZERO: Offset = { x: 0, y: 0 };
 const HEADLINE_WIRE = 'headline';
 const INSPECTOR_WIRE = 'inspector';
+/** The output card is fed by the traced projects: one wire per project. */
+const feedKey = (projectId: string) => `${INSPECTOR_WIRE}:${projectId}`;
 
 /** Milliseconds from first paint. Node delays here mirror the CSS intro. */
 const INTRO = {
@@ -230,7 +232,6 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
   const suppressClick = useRef(false);
   const frame = useRef(0);
   const desktop = useRef(false);
-  const focusRef = useRef(focus);
 
   const currentPlan = useMemo(() => plan(edges, focus), [edges, focus]);
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
@@ -243,6 +244,13 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
     [nodes],
   );
   const rootId = columns[NodeKind.ROOT][0]?.id;
+  const feeds = useMemo(
+    () =>
+      columns[NodeKind.PROJECT]
+        .filter((node) => node.id === focus || currentPlan.downstream.has(node.id))
+        .map((node) => node.id),
+    [columns, focus, currentPlan],
+  );
 
   const introActive = Number.isFinite(introElapsed);
   const remaining = (at: number) => Math.max(0, Math.round(at - introElapsed));
@@ -290,17 +298,13 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
 
     if (!isDesktop) return;
 
+    // Every project can feed the output card; only the traced ones are drawn.
     const inspector = inspectorRef.current;
-    const focusBox = boxes.get(focusRef.current);
-    if (inspector && focusBox) {
-      const from = portPoint(focusBox, Port.RIGHT);
+    if (inspector) {
       const to = { x: inspector.offsetLeft, y: inspector.offsetTop + 30 };
-      if (focusRef.current === rootId) {
-        // The root sits a whole graph away from the card: run above the nodes instead of behind them.
-        const topOfGraph = Math.min(...[...boxes].filter(([id]) => id !== rootId).map(([, box]) => box.y));
-        setPath(INSPECTOR_WIRE, channelWire({ from, to, channelY: Math.min(to.y, topOfGraph - 24) }));
-      } else {
-        setPath(INSPECTOR_WIRE, horizontalWire(from, to));
+      for (const node of columns[NodeKind.PROJECT]) {
+        const box = boxes.get(node.id);
+        if (box) setPath(feedKey(node.id), horizontalWire(portPoint(box, Port.RIGHT), to));
       }
     }
 
@@ -378,9 +382,8 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
     };
   }, [applyGeometry, clearOffsets, rootId, scheduleGeometry]);
 
-  // Re-route the inspector wire whenever the focus moves.
+  // Lay the wires out again whenever the focus moves.
   useLayoutEffect(() => {
-    focusRef.current = focus;
     applyGeometry();
   }, [focus, applyGeometry]);
 
@@ -589,14 +592,17 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
           pathLength={1}
           style={vars({ delay: `${remaining(INTRO.headlineWire)}ms` })}
         />
-        <path
-          ref={registerPath(INSPECTOR_WIRE)}
-          className="wire wire-desktop wire-dashed"
-          data-active
-          data-draw={introActive || undefined}
-          pathLength={1}
-          style={vars({ delay: `${remaining(INTRO.inspectorWire)}ms` })}
-        />
+        {feeds.map((id) => (
+          <path
+            key={feedKey(id)}
+            ref={registerPath(feedKey(id))}
+            className="wire wire-desktop wire-dashed"
+            data-active
+            data-draw={introActive || undefined}
+            pathLength={1}
+            style={vars({ delay: `${remaining(INTRO.inspectorWire)}ms` })}
+          />
+        ))}
         <g key={focus}>
           {edges
             .filter((edge) => currentPlan.activeEdges.has(edgeKey(edge)))
@@ -612,18 +618,22 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
               );
             })}
           <g className="wire-desktop">
-            <path
-              ref={registerPath(INSPECTOR_WIRE)}
-              className="pulse pulse-halo"
-              pathLength={1}
-              style={vars({ delay: `${pulseStart + (lastActiveColumn + 1) * PULSE_STEP}ms` })}
-            />
-            <path
-              ref={registerPath(INSPECTOR_WIRE)}
-              className="pulse pulse-core"
-              pathLength={1}
-              style={vars({ delay: `${pulseStart + (lastActiveColumn + 1) * PULSE_STEP}ms` })}
-            />
+            {feeds.map((id) => (
+              <g key={feedKey(id)}>
+                <path
+                  ref={registerPath(feedKey(id))}
+                  className="pulse pulse-halo"
+                  pathLength={1}
+                  style={vars({ delay: `${pulseStart + (lastActiveColumn + 1) * PULSE_STEP}ms` })}
+                />
+                <path
+                  ref={registerPath(feedKey(id))}
+                  className="pulse pulse-core"
+                  pathLength={1}
+                  style={vars({ delay: `${pulseStart + (lastActiveColumn + 1) * PULSE_STEP}ms` })}
+                />
+              </g>
+            ))}
           </g>
         </g>
       </svg>
