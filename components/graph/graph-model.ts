@@ -3,7 +3,6 @@ import 'server-only';
 import { capabilities } from '@/content/capabilities';
 import { profile } from '@/content/profile';
 import { projects } from '@/content/projects';
-import { ProjectSlug } from '@/content/types';
 import { caseStudyHref } from '@/lib/site';
 import type { GraphEdge } from './planner';
 import { type GraphModel, type GraphNodeModel, type InspectorModel, NodeKind } from './types';
@@ -47,7 +46,7 @@ export function buildGraphModel(): GraphModel {
   const details: Record<string, InspectorModel> = {
     [ROOT_ID]: {
       title: profile.name,
-      summary: `${profile.title} in ${profile.location}. ${profile.availability}, working across time zones.`,
+      summary: `Based in ${profile.location}, ${profile.timezone}, and ${profile.availability.toLowerCase()}. Every capability and project on this map traces back here.`,
       outputs: [
         { value: profile.experience, label: 'shipping production software' },
         { value: '4', label: 'countries of remote teams' },
@@ -74,5 +73,6 @@ export function buildGraphModel(): GraphModel {
     };
   }
 
-  return { nodes, edges, details, defaultFocus: ProjectSlug.APP_BUILDER };
+  // Open on the root: it traces to every node, so the first view is the whole map at full strength.
+  return { nodes, edges, details, defaultFocus: ROOT_ID };
 }

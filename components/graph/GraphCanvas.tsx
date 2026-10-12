@@ -13,7 +13,7 @@ import {
   useState,
 } from 'react';
 import { vars } from '@/lib/css';
-import { type Box, busWire, clamp, horizontalWire, Port, portPoint, verticalWire } from './geometry';
+import { type Box, busWire, channelWire, clamp, horizontalWire, Port, portPoint, verticalWire } from './geometry';
 import { edgeKey, neighbours, plan } from './planner';
 import { type GraphModel, type GraphNodeModel, NodeKind } from './types';
 
@@ -293,13 +293,15 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
     const inspector = inspectorRef.current;
     const focusBox = boxes.get(focusRef.current);
     if (inspector && focusBox) {
-      setPath(
-        INSPECTOR_WIRE,
-        horizontalWire(portPoint(focusBox, Port.RIGHT), {
-          x: inspector.offsetLeft,
-          y: inspector.offsetTop + 30,
-        }),
-      );
+      const from = portPoint(focusBox, Port.RIGHT);
+      const to = { x: inspector.offsetLeft, y: inspector.offsetTop + 30 };
+      if (focusRef.current === rootId) {
+        // The root sits a whole graph away from the card: run above the nodes instead of behind them.
+        const topOfGraph = Math.min(...[...boxes].filter(([id]) => id !== rootId).map(([, box]) => box.y));
+        setPath(INSPECTOR_WIRE, channelWire({ from, to, channelY: Math.min(to.y, topOfGraph - 24) }));
+      } else {
+        setPath(INSPECTOR_WIRE, horizontalWire(from, to));
+      }
     }
 
     const headlinePort = stage.querySelector<HTMLElement>('[data-headline-port]');
