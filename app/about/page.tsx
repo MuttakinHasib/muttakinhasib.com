@@ -5,6 +5,7 @@ import { TeamsDiagram } from '@/components/home/TeamsDiagram';
 import { JsonLd } from '@/components/site/JsonLd';
 import { PageTransition } from '@/components/site/PageTransition';
 import { education, experience } from '@/content/experience';
+import { profile } from '@/content/profile';
 import { getProject } from '@/content/projects';
 import { profilePageSchema } from '@/lib/schema';
 import { caseStudyHref } from '@/lib/site';
@@ -78,6 +79,13 @@ export default function AboutPage() {
               <p>
                 I’ve shipped that kind of work remotely with teams in the US, Singapore, France, and Vietnam, and led
                 a team of seven engineers as an engineering manager at iGOT.ai.
+              </p>
+              <p>
+                <a href={profile.resume} className="wire-link" rel="noopener" target="_blank">
+                  Read my resume
+                  <span className="sr-only"> (PDF, opens in a new tab)</span>
+                  <span className="wire" aria-hidden="true" />
+                </a>
               </p>
             </div>
           </div>

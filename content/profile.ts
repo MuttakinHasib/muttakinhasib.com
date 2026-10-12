@@ -10,6 +10,8 @@ export const profile = {
   email: 'muttakinislamhasib@gmail.com',
   github: 'https://github.com/MuttakinHasib',
   linkedin: 'https://linkedin.com/in/muttakinhasib',
+  /** Served from public/; rebuild it in the Resume repo and copy it over when the resume changes. */
+  resume: '/Muttakin_Islam_Hasib_Resume.pdf',
   focus: ['AI products', 'Interactive systems', 'Full stack engineering'],
   headline: 'I turn complex systems into intuitive experiences.',
   intro:

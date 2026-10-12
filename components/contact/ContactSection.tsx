@@ -52,6 +52,11 @@ export async function ContactSection() {
                 <span className="sr-only"> (opens in a new tab)</span>
                 <span className="wire" aria-hidden="true" />
               </a>
+              <a href={profile.resume} className="wire-link" rel="noopener" target="_blank">
+                Resume
+                <span className="sr-only"> (PDF, opens in a new tab)</span>
+                <span className="wire" aria-hidden="true" />
+              </a>
             </div>
           </div>
         </div>
