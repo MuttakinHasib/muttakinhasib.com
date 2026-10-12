@@ -228,7 +228,9 @@
     width: var(--wire);
     height: 1px;
     background: currentColor;
-    transition: width 320ms var(--ease-out);
+    transition:
+      width 320ms var(--ease-out),
+      margin-right 320ms var(--ease-out);
   }
 
   .wire-link .wire::before,
@@ -254,9 +256,12 @@
     transition: background-color 200ms ease;
   }
 
+  /* The wire grows into the space after the link, so the link's box never
+     widens: a wider box could wrap it out from under the pointer and back. */
   .wire-link:hover .wire,
   .wire-link:focus-visible .wire {
     width: calc(var(--wire) + 1.25rem);
+    margin-right: -1.25rem;
   }
 
   .wire-link:hover .wire::after,
