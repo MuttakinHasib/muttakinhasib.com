@@ -35,7 +35,7 @@ export function Hero() {
             <h1 id="hero-title" className="type-hero hero-title mt-5 lg:mt-7">
               {headlineLines.map((line, index) => (
                 <span key={line} className="intro-line">
-                  <span style={vars({ introDelay: `${headlineLineDelay(index)}ms` })}>
+                  <span style={vars({ 'intro-delay': `${headlineLineDelay(index)}ms` })}>
                     {line}
                     {index === headlineLines.length - 1 ? (
                       <span className="headline-port" data-headline-port aria-hidden="true" />
