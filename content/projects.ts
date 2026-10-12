@@ -214,7 +214,7 @@ export const projects: Project[] = [
     highlights: [
       'Browser IDE: Monaco, a file explorer, Output and Terminal xterm.js sessions on each chat’s Kubernetes pod, and a live preview.',
       'Agent output streamed over SSE into a live timeline, while the preview animates the step in progress.',
-      'Web performance improved by 80%, reaching Lighthouse 100 SEO, 100 Accessibility, and 91 Performance.',
+      'Web performance improved by 80%, reaching Lighthouse 100 in SEO, Accessibility, and Best Practices, and 91 in Performance.',
     ],
     overview: [
       'cocoding.ai turns natural-language prompts into full-stack SaaS applications. I architected and built its frontend from the first commit to production in Next.js, React, and TypeScript, and defined the state, API, and edge-auth layers.',
@@ -284,9 +284,9 @@ export const projects: Project[] = [
         context: 'Code splitting, dynamic imports, critical-CSS inlining, and re-render profiling.',
       },
       {
-        value: '100 / 100 / 91',
-        label: 'Lighthouse SEO, Accessibility, Performance',
-        context: 'Reported scores for the public-facing platform.',
+        value: '100',
+        label: 'Lighthouse SEO, Accessibility, and Best Practices',
+        context: 'Reported scores for the public-facing platform, with 91 Performance.',
       },
       {
         value: '16',

@@ -29,7 +29,7 @@ export const impact: ImpactEntry[] = [
     value: '80%',
     claim: 'web performance improvement',
     context:
-      'Code splitting, dynamic imports, critical-CSS inlining, and re-render profiling. Lighthouse: 100 SEO, 100 Accessibility, 91 Performance.',
+      'Code splitting, dynamic imports, critical-CSS inlining, and re-render profiling. Lighthouse: 100 SEO, 100 Accessibility, 100 Best Practices, 91 Performance.',
     project: ProjectSlug.COCODING,
     source: 'cocoding.ai',
     emphasis: Emphasis.LEAD,
