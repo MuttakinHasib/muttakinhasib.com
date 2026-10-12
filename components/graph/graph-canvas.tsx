@@ -287,12 +287,17 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
     if (headlinePort && rootBox) {
       const stageRect = stage.getBoundingClientRect();
       const portRect = headlinePort.getBoundingClientRect();
+      // The headline's last line rises from behind its mask during the intro. Route
+      // to where the port lands: the line's offset from the mask is the rise left to go.
+      const mask = headlinePort.closest('.intro-line');
+      const line = mask?.firstElementChild;
+      const rise = mask && line ? line.getBoundingClientRect().top - mask.getBoundingClientRect().top : 0;
       setPath(
         HEADLINE_WIRE,
         verticalWire(
           {
             x: portRect.left - stageRect.left + portRect.width / 2,
-            y: portRect.top - stageRect.top + portRect.height / 2,
+            y: portRect.top - stageRect.top + portRect.height / 2 - rise,
           },
           { x: rootBox.x + 32, y: rootBox.y },
         ),
