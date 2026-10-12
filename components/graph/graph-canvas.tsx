@@ -362,7 +362,10 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
   }, [focus, applyGeometry]);
 
   // Mark the intro finished so routes kept alive by <Activity> don't replay it.
+  // Not before the first measurement: until then introElapsed is still its
+  // initial Infinity, and marking done would cut the CSS intro at hydration.
   useEffect(() => {
+    if (!ready) return;
     if (!introActive) {
       document.documentElement.dataset.intro = 'done';
       return;
@@ -372,7 +375,7 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
       setIntroElapsed(Number.POSITIVE_INFINITY);
     }, Math.max(0, Math.round(INTRO.done - introElapsed)));
     return () => window.clearTimeout(timer);
-  }, [introActive, introElapsed]);
+  }, [ready, introActive, introElapsed]);
 
   const select = useCallback(
     (id: string) => {
