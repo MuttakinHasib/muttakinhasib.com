@@ -2354,7 +2354,7 @@
 
   @container (width >= 56rem) {
     .cw-ide {
-      grid-template-columns: 3.25rem minmax(0, 16rem) 10.5rem minmax(0, 1fr);
+      grid-template-columns: 3.25rem minmax(0, 16rem) 12rem minmax(0, 1fr);
     }
   }
 
@@ -3185,7 +3185,7 @@
     color: var(--c-gray);
   }
 
-  @container (width >= 66rem) {
+  @container (width >= 68rem) {
     .cw-tools {
       display: inline-flex;
     }
@@ -3211,7 +3211,7 @@
     display: flex;
   }
 
-  @container (width >= 66rem) {
+  @container (width >= 68rem) {
     .cw-pane {
       display: flex;
     }
