@@ -4994,6 +4994,24 @@
   color: var(--color-graphite);
 }
 
+.ag-keyboard summary {
+  width: fit-content;
+  font-size: 0.875rem;
+  font-weight: 560;
+  color: var(--color-graphite);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.ag-keyboard summary:hover {
+  color: var(--color-ink);
+}
+
+.ag-keyboard[open] summary {
+  margin-bottom: 0.75rem;
+}
+
 .ag-connect {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

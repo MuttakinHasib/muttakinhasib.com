@@ -442,7 +442,7 @@ export default function ExecutionOrderDemo() {
   return (
     <DemoFrame
       title="Rewire the agent"
-      instructions="Drag from a task’s right-hand port to another task to connect them, select a connection to remove it, or press + to add a task. The run order and the layout follow the edges on every change, and a connection that would loop back is refused."
+      instructions="Drag from a task’s right-hand port to another task, or click one port and then the other, to connect them. Select a connection to remove it, or press + to add a task. The run order and the layout follow the edges on every change, and a connection that would loop back is refused."
       note="A simplified reconstruction for this portfolio. iGOT.ai Studio’s engine syncs these edges with the backend; here the order is computed in the browser."
     >
       <div className="ag-layout">
@@ -506,35 +506,38 @@ export default function ExecutionOrderDemo() {
             </ol>
           </div>
 
-          <div className="grid content-start gap-4">
-            <form className="ag-connect" onSubmit={submit}>
-              <label>
-                <span className="type-small font-[600]">From</span>
-                <select className="demo-select" value={from} onChange={(event) => setFrom(event.target.value)}>
-                  {graph.tasks.map((task) => (
-                    <option key={task.id} value={task.id}>
-                      {task.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span className="type-small font-[600]">To</span>
-                <select className="demo-select" value={to} onChange={(event) => setTo(event.target.value)}>
-                  {graph.tasks.map((task) => (
-                    <option key={task.id} value={task.id}>
-                      {task.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button type="submit" className="demo-button demo-button-strong">
-                Connect
-              </button>
-            </form>
+          <div className="grid content-start gap-3">
             <p className="type-small min-h-[3em] text-graphite" aria-live="polite">
               {message || 'The run order is worked out from the edges: a task runs once everything feeding it has.'}
             </p>
+            <details className="ag-keyboard">
+              <summary>Connect without dragging</summary>
+              <form className="ag-connect" onSubmit={submit}>
+                <label>
+                  <span className="type-small font-[600]">From</span>
+                  <select className="demo-select" value={from} onChange={(event) => setFrom(event.target.value)}>
+                    {graph.tasks.map((task) => (
+                      <option key={task.id} value={task.id}>
+                        {task.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="type-small font-[600]">To</span>
+                  <select className="demo-select" value={to} onChange={(event) => setTo(event.target.value)}>
+                    {graph.tasks.map((task) => (
+                      <option key={task.id} value={task.id}>
+                        {task.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button type="submit" className="demo-button demo-button-strong">
+                  Connect
+                </button>
+              </form>
+            </details>
           </div>
         </div>
       </div>
