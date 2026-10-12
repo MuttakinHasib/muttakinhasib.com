@@ -1,7 +1,8 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { DemoFrame } from './DemoFrame';
+import { wirePath } from '../visuals/primitives';
+import { DemoFrame } from './demo-frame';
 
 const Tenant = { A: 'a', B: 'b', C: 'c' } as const;
 type Tenant = (typeof Tenant)[keyof typeof Tenant];
@@ -194,12 +195,7 @@ function Diagram({ layout, nodes, active }: DiagramProps) {
         if (a.column === b.column) {
           d = `M${pa.x + NODE_W / 2} ${pa.y + NODE_H}L${pb.x + NODE_W / 2} ${pb.y}`;
         } else {
-          const sx = pa.x + NODE_W;
-          const sy = pa.y + NODE_H / 2;
-          const tx = pb.x;
-          const ty = pb.y + NODE_H / 2;
-          const k = Math.max(30, Math.abs(tx - sx) / 2);
-          d = `M${sx} ${sy}C${sx + k} ${sy} ${tx - k} ${ty} ${tx} ${ty}`;
+          d = wirePath({ x: pa.x + NODE_W, y: pa.y + NODE_H / 2 }, { x: pb.x, y: pb.y + NODE_H / 2 });
         }
         return <path key={`${from}-${to}`} d={d} className="tr-edge" data-active={on || undefined} />;
       })}

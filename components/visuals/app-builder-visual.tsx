@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Dots, type Pt, VizFrame } from './primitives';
+import { Cursor, Dots, wirePath, type Pt, SelectionBox, VizFrame } from './primitives';
+import { VIZ_CANVAS as CANVAS, VIZ_FOG as FOG, VIZ_INK as INK, VIZ_NODE as NODE, VIZ_PAPER as PAPER, VIZ_SIGNAL as SIGNAL, VIZ_STROKE as NODE_STROKE, VIZ_TYPE_COLOR } from './palette';
 import { SelectionToolbar, selectionToolbarLayout } from './selection-toolbar';
-import { VaseArt } from './VaseArt';
+import { VaseArt } from './vase-art';
 
 /**
  * App Builder, reconstructed after the live editor. Two moments:
@@ -72,11 +73,6 @@ interface FieldProps extends Pt {
   value: string;
 }
 
-interface SelectionBoxProps extends Pt {
-  w: number;
-  h: number;
-}
-
 interface RoleStyle {
   fill: string;
   stroke: string;
@@ -90,21 +86,10 @@ interface ToggleRowProps extends Pt {
   value: string;
 }
 
-const CANVAS = '#0f0f0f';
-const NODE = '#1b1b1a';
-const NODE_STROKE = '#30302c';
-const PAPER = '#f4f1e8';
-const FOG = '#a9a79c';
-const INK = '#171815';
-const SIGNAL = '#c7f36b';
 const VIOLET = '#9b6dff';
 const AMBER = '#f5a524';
 
-const TYPE_COLOR: Record<PortType, string> = {
-  [PortType.TEXT]: '#8ab4ff',
-  [PortType.IMAGE]: '#e6a03a',
-  [PortType.VIDEO]: '#94cc7a',
-};
+const TYPE_COLOR: Record<PortType, string> = VIZ_TYPE_COLOR;
 
 const ROLE_STYLE: Record<Role, RoleStyle> = {
   [Role.INPUT]: { fill: '#22163d', stroke: VIOLET, width: 2.5, opacity: 1 },
@@ -179,27 +164,13 @@ function FlowNode({ x, y, w, h, icon, name, meta, role = Role.NONE, inputs = [],
 }
 
 function TypedWire({ from, to, type, dim }: TypedWireProps) {
-  const k = Math.max(36, Math.abs(to.x - from.x) * 0.5);
   return (
     <path
-      d={`M${from.x} ${from.y}C${from.x + k} ${from.y} ${to.x - k} ${to.y} ${to.x} ${to.y}`}
+      d={wirePath(from, to, Math.max(36, Math.abs(to.x - from.x) * 0.5))}
       fill="none"
       stroke={TYPE_COLOR[type]}
       strokeWidth={2}
       opacity={dim ? 0.3 : 0.95}
-    />
-  );
-}
-
-function Cursor({ x, y }: Pt) {
-  return (
-    <path
-      transform={`translate(${x} ${y})`}
-      d="M0 0L0 22L6 16.5L10.5 26L14.5 24.2L10 14.8L17.5 14.8Z"
-      fill={PAPER}
-      stroke={INK}
-      strokeWidth="1.4"
-      strokeLinejoin="round"
     />
   );
 }
@@ -333,23 +304,6 @@ function BuilderPanel({ x, y, w, h, compact }: PanelProps) {
           </text>
         </>
       )}
-    </g>
-  );
-}
-
-function SelectionBox({ x, y, w, h }: SelectionBoxProps) {
-  const corners: [number, number][] = [
-    [x, y],
-    [x + w, y],
-    [x, y + h],
-    [x + w, y + h],
-  ];
-  return (
-    <g>
-      <rect x={x} y={y} width={w} height={h} fill="none" stroke="rgba(244,241,232,0.55)" strokeWidth="1" />
-      {corners.map(([cx, cy]) => (
-        <rect key={`${cx}-${cy}`} x={cx - 4} y={cy - 4} width={8} height={8} fill={PAPER} />
-      ))}
     </g>
   );
 }

@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { profile } from '@/content/profile';
+import { VIZ_FOG as FOG, VIZ_GRAPHITE as GRAPHITE, VIZ_INK as INK, VIZ_PAPER as PAPER, VIZ_SIGNAL as SIGNAL } from '@/components/visuals/palette';
 
 export const ogSize = { width: 1200, height: 630 };
 
@@ -8,10 +9,6 @@ interface OgCard {
   title: string;
   subtitle: string;
 }
-
-const INK = '#171815';
-const PAPER = '#f4f1e8';
-const SIGNAL = '#c7f36b';
 
 /** Shared Open Graph card: a person node wired into the page's title. */
 export function renderOgCard({ kicker, title, subtitle }: OgCard): ImageResponse {
@@ -41,7 +38,7 @@ export function renderOgCard({ kicker, title, subtitle }: OgCard): ImageResponse
             borderRadius: 10,
           }}
         >
-          <div style={{ fontSize: 20, color: '#a9a79c' }}>person</div>
+          <div style={{ fontSize: 20, color: FOG }}>person</div>
           <div style={{ fontSize: 30, fontWeight: 700 }}>{profile.name}</div>
         </div>
         <div style={{ display: 'flex', width: 120, height: 3, background: INK }} />
@@ -55,13 +52,13 @@ export function renderOgCard({ kicker, title, subtitle }: OgCard): ImageResponse
             border: `3px solid ${INK}`,
           }}
         />
-        <div style={{ display: 'flex', marginLeft: 20, fontSize: 24, color: '#5c5b54' }}>{kicker}</div>
+        <div style={{ display: 'flex', marginLeft: 20, fontSize: 24, color: GRAPHITE }}>{kicker}</div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <div style={{ fontSize: 76, fontWeight: 700, letterSpacing: -2, lineHeight: 1.02, maxWidth: 1000 }}>
           {title}
         </div>
-        <div style={{ marginTop: 24, fontSize: 30, color: '#5c5b54', maxWidth: 940 }}>{subtitle}</div>
+        <div style={{ marginTop: 24, fontSize: 30, color: GRAPHITE, maxWidth: 940 }}>{subtitle}</div>
       </div>
     </div>,
     ogSize,

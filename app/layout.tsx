@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Archivo, Martian_Mono } from 'next/font/google';
-import { Header } from '@/components/site/Header';
-import { HistoryScroll } from '@/components/site/HistoryScroll';
-import { JsonLd } from '@/components/site/JsonLd';
+import { Header } from '@/components/site/header';
+import { HistoryScroll } from '@/components/site/history-scroll';
+import { JsonLd } from '@/components/site/json-ld';
 import { profile } from '@/content/profile';
 import { personSchema, websiteSchema } from '@/lib/schema';
 import { siteUrl } from '@/lib/site';

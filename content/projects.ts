@@ -1,4 +1,4 @@
-import { CapabilityId, type Project, ProjectSlug, ProjectTone } from './types';
+import { CapabilityId, type Project, ProjectSlug, ProjectTone } from './types.ts';
 
 export const projects: Project[] = [
   {
@@ -111,7 +111,7 @@ export const projects: Project[] = [
     capabilities: [CapabilityId.INTERACTIVE, CapabilityId.AI],
     related: [ProjectSlug.GENERATIVE_FILL, ProjectSlug.IGOT],
     seoDescription:
-      'Case study: how Muttakin Islam Hasib architected App Builder for ImagineArt Workflows, turning node-based AI workflows into publishable apps with a reachability-based graph planner, and made the canvas ~20% faster with zoom-aware image and video loading.',
+      'Case study: App Builder for ImagineArt Workflows, turning node-based AI workflows into publishable apps, and a ~20% faster canvas from zoom-aware media loading.',
   },
   {
     slug: ProjectSlug.GENERATIVE_FILL,
@@ -197,7 +197,7 @@ export const projects: Project[] = [
     capabilities: [CapabilityId.INTERACTIVE, CapabilityId.AI],
     related: [ProjectSlug.APP_BUILDER, ProjectSlug.COCODING],
     seoDescription:
-      'Case study: Generative Fill and Compositor, two AI image editors Muttakin Islam Hasib built for ImagineArt, with inpainting, outpainting, optimistic previews, and Konva multi-layer editing.',
+      'Case study: Generative Fill and Compositor, two ImagineArt AI image editors with inpainting, outpainting, optimistic previews, and Konva multi-layer editing.',
   },
   {
     slug: ProjectSlug.COCODING,
@@ -317,7 +317,7 @@ export const projects: Project[] = [
     capabilities: [CapabilityId.AI, CapabilityId.FULL_STACK, CapabilityId.PLATFORM],
     related: [ProjectSlug.IGOT, ProjectSlug.APP_BUILDER],
     seoDescription:
-      'Case study: the cocoding.ai browser IDE, real-time agent timeline, live activity preview, and Database Explorer Muttakin Islam Hasib built from first commit to production, with an 80% web performance improvement.',
+      'Case study: the cocoding.ai browser IDE, real-time agent timeline, and Database Explorer, built from first commit to production with an 80% performance gain.',
   },
   {
     slug: ProjectSlug.HASHMATO,
@@ -440,7 +440,7 @@ export const projects: Project[] = [
     capabilities: [CapabilityId.FULL_STACK, CapabilityId.PLATFORM],
     related: [ProjectSlug.COCODING, ProjectSlug.IGOT],
     seoDescription:
-      'Case study: payment, delivery, pricing, and ordering services Muttakin Islam Hasib built for Hashmato’s multi-tenant cloud POS on NestJS, PostgreSQL, Redis, and Kubernetes.',
+      'Case study: payment, delivery, pricing, and ordering services for Hashmato’s multi-tenant cloud POS, built on NestJS, PostgreSQL, Redis, and Kubernetes.',
   },
   {
     slug: ProjectSlug.IGOT,
@@ -563,7 +563,7 @@ export const projects: Project[] = [
     ],
     related: [ProjectSlug.APP_BUILDER, ProjectSlug.COCODING],
     seoDescription:
-      'Case study: the React Flow graph engine Muttakin Islam Hasib architected for iGOT.ai’s no-code AI agent builder, and his work leading 7 engineers across 5 AI products.',
+      'Case study: the React Flow graph engine behind iGOT.ai’s no-code AI agent builder, and leading 7 engineers across 5 AI products as engineering manager.',
   },
 ];
 

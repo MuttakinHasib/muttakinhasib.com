@@ -1,6 +1,7 @@
 import { type EditorGlyph, EditorIcon } from './editor-icons';
 import { Lucide } from './lucide-icons';
-import { Dots, type Pt, VizFrame } from './primitives';
+import { Cursor, Dots, wirePath, type Pt, VizFrame } from './primitives';
+import { VIZ_CANVAS as CANVAS, VIZ_FOG as FOG, VIZ_INK as INK, VIZ_NODE as NODE, VIZ_PAPER as PAPER, VIZ_SIGNAL as SIGNAL, VIZ_STROKE as STROKE } from './palette';
 
 /**
  * iGOT.ai Studio's agent builder, reconstructed around what the graph engine
@@ -71,14 +72,6 @@ interface PillProps extends Pt {
   label: string;
   glyph?: EditorGlyph;
 }
-
-const CANVAS = '#0f0f0f';
-const NODE = '#1b1b1a';
-const STROKE = '#30302c';
-const PAPER = '#f4f1e8';
-const FOG = '#a9a79c';
-const INK = '#171815';
-const SIGNAL = '#c7f36b';
 
 const KIND_STYLE: Record<Kind, KindStyle> = {
   [Kind.AGENT]: { stroke: '#3fbf7f', fill: '#13231a' },
@@ -191,10 +184,9 @@ const narrowLayout: Layout = {
 const taskById = new Map(tasks.map((task) => [task.id, task]));
 
 function Wire({ from, to, color, dashed }: WireProps) {
-  const k = Math.max(36, Math.abs(to.x - from.x) * 0.5);
   return (
     <path
-      d={`M${from.x} ${from.y}C${from.x + k} ${from.y} ${to.x - k} ${to.y} ${to.x} ${to.y}`}
+      d={wirePath(from, to, Math.max(36, Math.abs(to.x - from.x) * 0.5))}
       fill="none"
       stroke={color}
       strokeWidth={2}
@@ -239,19 +231,6 @@ function TaskCard({ x, y, task, w }: CardProps) {
         {task.lines[1]}
       </text>
     </g>
-  );
-}
-
-function Cursor({ x, y }: Pt) {
-  return (
-    <path
-      transform={`translate(${x} ${y})`}
-      d="M0 0L0 22L6 16.5L10.5 26L14.5 24.2L10 14.8L17.5 14.8Z"
-      fill={PAPER}
-      stroke={INK}
-      strokeWidth="1.4"
-      strokeLinejoin="round"
-    />
   );
 }
 

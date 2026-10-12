@@ -1,22 +1,34 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Suspense, ViewTransition } from 'react';
-import { CaseStudyDemo } from '@/components/case-study/CaseStudyDemo';
-import { CocodingWorkspace } from '@/components/case-study/CocodingWorkspace';
-import { CaseStudyExtras } from '@/components/case-study/CaseStudyExtras';
-import { CaseSection, NoteList } from '@/components/case-study/CaseSection';
-import { ContactSection } from '@/components/contact/ContactSection';
-import { MetricList } from '@/components/home/SelectedWork';
-import { JsonLd } from '@/components/site/JsonLd';
-import { PageTransition } from '@/components/site/PageTransition';
-import { ProjectVisual } from '@/components/visuals/ProjectVisual';
+import { ViewTransition } from 'react';
+import { CaseStudyDemo } from '@/components/case-study/case-study-demo';
+import { CocodingWorkspace } from '@/components/case-study/cocoding-workspace';
+import { CaseStudyExtras } from '@/components/case-study/case-study-extras';
+import { CaseSection, NoteList } from '@/components/case-study/case-section';
+import { ContactSection } from '@/components/contact/contact-section';
+import { MetricList } from '@/components/ui/metric-list';
+import { JsonLd } from '@/components/site/json-ld';
+import { PageTransition } from '@/components/site/page-transition';
+import { projectTitleMorphName, projectVisualMorphName } from '@/components/site/morph-names';
+import { ProjectVisual } from '@/components/visuals/project-visual';
 import { findProject, getNextProject, getProject, projects } from '@/content/projects';
-import { ProjectSlug, ProjectTone } from '@/content/types';
+import { ProjectSlug, isDarkTone, ProjectTone } from '@/content/types';
 import { caseStudySchema } from '@/lib/schema';
 import { caseStudyHref } from '@/lib/site';
 
-const darkTones = new Set<string>([ProjectTone.SIGNAL, ProjectTone.STREAM]);
+/**
+ * Every case study is prerendered whole. Without a Suspense boundary around it,
+ * React keeps the content in document order instead of painting a fallback with
+ * the footer under it and swapping the page in afterwards.
+ */
+export const ensureStatic = 'navigation';
+/**
+ * The trade for that: a link without `prefetch` waits for the static payload
+ * instead of showing a fallback. The work list, home features, and next-project
+ * links prefetch it, so their navigations stay instant.
+ */
+export const instant = false;
 
 export function generateStaticParams() {
   return projects.map((project) => ({ slug: project.slug }));
@@ -28,7 +40,7 @@ export async function generateMetadata({ params }: PageProps<'/work/[slug]'>): P
   if (!project) return {};
   const path = caseStudyHref(project.slug);
   return {
-    title: `${project.title} case study`,
+    title: project.title,
     description: project.seoDescription,
     alternates: { canonical: path },
     openGraph: {
@@ -52,27 +64,9 @@ interface CaseStudyProps {
 export default function CaseStudyPage({ params }: PageProps<'/work/[slug]'>) {
   return (
     <PageTransition>
-      <Suspense fallback={<CaseStudyFallback />}>
-        <CaseStudy params={params} />
-      </Suspense>
+      <CaseStudy params={params} />
       <ContactSection />
     </PageTransition>
-  );
-}
-
-/** Shown only when a navigation beats its prefetch; direct visits get the prerendered page. */
-function CaseStudyFallback() {
-  return (
-    <main id="main" tabIndex={-1} className="case-study" aria-busy="true">
-      <div className="cs-hero bg-paper">
-        <div className="shell pt-[calc(var(--header-h)+clamp(2rem,6vh,4rem))]">
-          <p className="type-small text-graphite" role="status">
-            Loading case study…
-          </p>
-          <div className="cs-skeleton mt-10" />
-        </div>
-      </div>
-    </main>
   );
 }
 
@@ -83,7 +77,7 @@ async function CaseStudy({ params }: CaseStudyProps) {
 
   const next = getNextProject(project.slug);
   const related = project.related.map(getProject);
-  const dark = darkTones.has(project.tone);
+  const dark = isDarkTone(project.tone);
 
   return (
     <>
@@ -105,7 +99,7 @@ async function CaseStudy({ params }: CaseStudyProps) {
             </nav>
             <div className="grid-12 mt-8 gap-y-8">
               <div className="col-span-4 md:col-span-12 lg:col-span-9">
-                <ViewTransition name={`project-title-${project.slug}`} share="project-morph" default="none">
+                <ViewTransition name={projectTitleMorphName(project.slug)} share="project-morph" default="none">
                   <h1 className="type-display feature-title">{project.title}</h1>
                 </ViewTransition>
                 <p className="type-lead mt-6 max-w-[52ch]">{project.summary}</p>
@@ -133,7 +127,7 @@ async function CaseStudy({ params }: CaseStudyProps) {
               </div>
             </dl>
             <div className="cs-hero-visual">
-              <ViewTransition name={`project-visual-${project.slug}`} share="project-morph" default="none">
+              <ViewTransition name={projectVisualMorphName(project.slug)} share="project-morph" default="none">
                 <div>
                   {project.slug === ProjectSlug.COCODING ? <CocodingWorkspace /> : <ProjectVisual slug={project.slug} />}
                 </div>

@@ -1,4 +1,4 @@
-import { ProjectSlug } from './types';
+import { ProjectSlug } from './types.ts';
 
 export interface Role {
   title: string;

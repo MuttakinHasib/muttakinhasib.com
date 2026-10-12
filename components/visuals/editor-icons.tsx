@@ -129,3 +129,32 @@ export function EditorIcon({ x, y, glyph, size, color, strokeWidth }: EditorIcon
     </g>
   );
 }
+
+interface HtmlIconProps {
+  glyph: EditorGlyph;
+  /** Rendered width and height, for HTML contexts that set them. */
+  size?: number;
+  className?: string;
+}
+
+/** The same glyphs as `EditorIcon`, as a standalone `<svg>` for HTML contexts. */
+export function HtmlIcon({ glyph, size, className }: HtmlIconProps) {
+  return (
+    <svg
+      className={className}
+      viewBox={`0 0 ${glyph.box} ${glyph.box}`}
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={glyph.strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {glyph.paths.map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </svg>
+  );
+}

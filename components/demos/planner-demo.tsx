@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useElementWidth } from '@/lib/use-element-width';
 import { type AppPlan, planApp, type WorkflowEdgeSpec, WorkflowKind, type WorkflowNodeSpec } from './app-plan';
 import { Glyph } from '../visuals/editor-icons';
-import { DemoFrame } from './DemoFrame';
+import { DemoFrame } from './demo-frame';
 
 const PreviewRole = {
   INPUT: 'input',

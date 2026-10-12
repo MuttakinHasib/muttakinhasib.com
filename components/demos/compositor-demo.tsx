@@ -1,7 +1,7 @@
 'use client';
 
 import { type KeyboardEvent, type PointerEvent, useEffect, useId, useRef, useState } from 'react';
-import { DemoFrame } from './DemoFrame';
+import { DemoFrame } from './demo-frame';
 
 const BlendMode = {
   NORMAL: 'normal',

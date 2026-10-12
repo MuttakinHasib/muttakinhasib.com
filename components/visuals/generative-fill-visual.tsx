@@ -1,7 +1,8 @@
 import { useId } from 'react';
 import { type EditorGlyph, EditorIcon, Glyph } from './editor-icons';
-import { Dots, type Pt, VizFrame } from './primitives';
-import { VaseArt } from './VaseArt';
+import { Dots, type Pt, SelectionBox, VizFrame } from './primitives';
+import { VIZ_CANVAS as CANVAS, VIZ_FOG as FOG, VIZ_INK as INK, VIZ_NODE as NODE, VIZ_PAPER as PAPER, VIZ_ROSE as GUIDE, VIZ_STROKE as STROKE } from './palette';
+import { VaseArt } from './vase-art';
 
 /**
  * Generative Fill and Compositor, reconstructed after the live editors:
@@ -56,15 +57,8 @@ interface BlurDefsProps {
   id: string;
 }
 
-const CANVAS = '#0f0f0f';
-const NODE = '#1b1b1a';
-const STROKE = '#30302c';
-const PAPER = '#f4f1e8';
-const FOG = '#a9a79c';
-const INK = '#171815';
 const MASK = 'rgba(167,139,250,0.6)';
 const OUTPAINT = '#2a1650';
-const GUIDE = '#ef5b8c';
 
 /** Measured widths of the toolbar's "Inpaint" and "Model" labels at each layout's type size. */
 const LABEL_WIDTH = {
@@ -336,14 +330,7 @@ function Wide() {
       <VaseArt x={190} y={596} w={220} h={140} />
       <rect x={410} y={596} width={150} height={140} fill={OUTPAINT} />
       <rect x={190} y={596} width={370} height={140} fill="none" stroke={PAPER} strokeWidth="1" />
-      {[
-        [190, 596],
-        [560, 596],
-        [190, 736],
-        [560, 736],
-      ].map(([hx, hy]) => (
-        <rect key={`${hx}-${hy}`} x={hx - 4} y={hy - 4} width={8} height={8} fill={PAPER} />
-      ))}
+      <SelectionBox x={190} y={596} w={370} h={140} frame={false} />
       <rect x={556} y={650} width={8} height={32} rx={4} fill={PAPER} />
 
       <Compositor x={612} y={24} w={572} h={712} />

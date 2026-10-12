@@ -1,6 +1,7 @@
-import { Dots, type Pt, VizFrame } from './primitives';
+import { Cursor, Dots, type Pt, SelectionBox, VizFrame } from './primitives';
+import { VIZ_CANVAS as CANVAS, VIZ_FOG as FOG, VIZ_INK as INK, VIZ_NODE as NODE, VIZ_PAPER as PAPER, VIZ_STROKE as STROKE, VIZ_TYPE_COLOR } from './palette';
 import { SelectionToolbar } from './selection-toolbar';
-import { VaseArt } from './VaseArt';
+import { VaseArt } from './vase-art';
 
 /**
  * Group connections, reconstructed after the live editor: a multi-selection
@@ -27,14 +28,8 @@ interface TargetProps extends Pt {
   compact?: boolean;
 }
 
-const CANVAS = '#0f0f0f';
-const NODE = '#1b1b1a';
-const STROKE = '#30302c';
-const PAPER = '#f4f1e8';
-const FOG = '#a9a79c';
-const INK = '#171815';
-const IMAGE = '#e6a03a';
-const TEXT = '#8ab4ff';
+const IMAGE = VIZ_TYPE_COLOR.image;
+const TEXT = VIZ_TYPE_COLOR.text;
 
 function SourceNode({ x, y, w, name, variant }: SourceNodeProps) {
   return (
@@ -99,15 +94,7 @@ function Wide() {
 
       {/* Selection toolbar, centred over the selection box */}
       <SelectionToolbar x={21} y={20} />
-      <rect x={60} y={74} width={360} height={344} fill="none" stroke="rgba(244,241,232,0.55)" />
-      {[
-        [60, 74],
-        [420, 74],
-        [60, 418],
-        [420, 418],
-      ].map(([cx, cy]) => (
-        <rect key={`${cx}-${cy}`} x={cx - 4} y={cy - 4} width={8} height={8} fill={PAPER} />
-      ))}
+      <SelectionBox x={60} y={74} w={360} h={344} />
       <SourceNode x={90} y={114} w={260} name="Front angle" variant="source" />
       <SourceNode x={90} y={220} w={260} name="Side angle" variant="generated" />
       <SourceNode x={90} y={326} w={260} name="Top angle" variant="source" />
@@ -118,13 +105,7 @@ function Wide() {
         Image ×3
       </text>
       <path d="M420 246C560 246 620 262 752 262" fill="none" stroke={IMAGE} strokeWidth="2.5" strokeDasharray="7 6" />
-      <path
-        transform="translate(724 254)"
-        d="M0 0L0 22L6 16.5L10.5 26L14.5 24.2L10 14.8L17.5 14.8Z"
-        fill={PAPER}
-        stroke={INK}
-        strokeWidth="1.4"
-      />
+      <Cursor x={724} y={254} miter />
 
       <Target x={760} y={84} w={380} h={330} />
       <text x={60} y={446} className="v-kicker" fill={FOG}>
