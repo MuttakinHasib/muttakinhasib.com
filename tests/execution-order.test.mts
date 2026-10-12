@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { createsCycle, type DagEdge, executionPlan } from '../components/demos/execution-order.ts';
+import { autoLayout, createsCycle, type DagEdge, executionPlan, layersOf } from '../components/demos/execution-order.ts';
 
 const nodes = ['trigger', 'kb', 'search', 'llm', 'reply'];
 const edges: DagEdge[] = [
@@ -44,5 +44,34 @@ describe('createsCycle', () => {
 
   it('accepts an edge that keeps the graph acyclic', () => {
     assert.equal(createsCycle(edges, { from: 'kb', to: 'reply' }), false);
+  });
+});
+
+describe('layersOf', () => {
+  it('groups the run order by layer', () => {
+    assert.deepEqual(layersOf(executionPlan(nodes, edges)), [['trigger'], ['kb', 'search'], ['llm'], ['reply']]);
+  });
+});
+
+describe('autoLayout', () => {
+  const options = { nodeWidth: 200, nodeHeight: 100, gapMain: 60, gapCross: 20, vertical: false };
+
+  it('gives each layer its own column, left to right', () => {
+    const positions = autoLayout({ plan: executionPlan(nodes, edges), options });
+    assert.deepEqual(positions.get('trigger'), { x: 0, y: -50 });
+    assert.equal(positions.get('kb')?.x, 260);
+    assert.equal(positions.get('reply')?.x, 780);
+  });
+
+  it('centres a layer on the same line and keeps its tasks apart', () => {
+    const positions = autoLayout({ plan: executionPlan(nodes, edges), options });
+    assert.deepEqual(positions.get('kb'), { x: 260, y: -110 });
+    assert.deepEqual(positions.get('search'), { x: 260, y: 10 });
+  });
+
+  it('runs top to bottom when vertical', () => {
+    const positions = autoLayout({ plan: executionPlan(nodes, edges), options: { ...options, vertical: true } });
+    assert.deepEqual(positions.get('trigger'), { x: -100, y: 0 });
+    assert.deepEqual(positions.get('kb'), { x: -210, y: 160 });
   });
 });

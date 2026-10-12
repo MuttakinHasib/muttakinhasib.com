@@ -1,281 +1,543 @@
 'use client';
 
-import { domAnimation, LazyMotion, MotionConfig, m } from 'motion/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  applyNodeChanges,
+  Background,
+  BackgroundVariant,
+  BaseEdge,
+  type Connection,
+  type Edge,
+  type EdgeChange,
+  EdgeLabelRenderer,
+  type EdgeProps,
+  type FinalConnectionState,
+  getBezierPath,
+  Handle,
+  type Node,
+  type NodeChange,
+  type NodeProps,
+  Position,
+  ReactFlow,
+  type ReactFlowInstance,
+} from '@xyflow/react';
+import '@xyflow/react/dist/base.css';
+import { type CSSProperties, type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMediaQuery } from '@/lib/use-media-query';
+import type { EditorGlyph } from '../visuals/editor-icons';
+import { Lucide } from '../visuals/lucide-icons';
 import { DemoFrame } from './DemoFrame';
-import { createsCycle, type DagEdge, executionPlan } from './execution-order';
+import {
+  autoLayout,
+  createsCycle,
+  type DagEdge,
+  type ExecutionPlan,
+  executionPlan,
+  type LayoutOptions,
+  layersOf,
+} from './execution-order';
 
-interface AgentNode {
+/**
+ * The agent builder's graph engine, rebuilt on React Flow: the edges are the
+ * program. Connecting, disconnecting, or adding a task recomputes the run
+ * order and the auto-layout; a connection that would loop back is refused,
+ * and a task added with + is on the canvas at once, dashed while it saves.
+ */
+
+const Kind = {
+  AGENT: 'agent',
+  TOOL: 'tool',
+} as const;
+type Kind = (typeof Kind)[keyof typeof Kind];
+
+interface Task {
   id: string;
-  label: string;
-  short: string;
-  kind: string;
+  kind: Kind;
+  name: string;
+  detail: string;
+  glyph: EditorGlyph;
+  /** Its outgoing edges. */
+  color: string;
 }
 
-interface Candidate extends DagEdge {
-  key: string;
-}
-
-interface Point {
-  x: number;
-  y: number;
-}
-
-interface LayoutSpace {
-  width: number;
-  height: number;
-  nodeW: number;
-  nodeH: number;
+interface TaskNodeData extends Record<string, unknown> {
+  task: Task;
+  order: number;
+  pending: boolean;
   vertical: boolean;
+  canAdd: boolean;
+  onAdd: (id: string) => void;
 }
 
-interface EdgeRequest {
-  from: Point;
-  to: Point;
-  space: LayoutSpace;
+type TaskNode = Node<TaskNodeData, 'task'>;
+
+interface TaskEdgeData extends Record<string, unknown> {
+  label: string;
+  onRemove: (id: string) => void;
 }
 
-interface LayoutRequest {
-  nodes: AgentNode[];
-  depth: Map<string, number>;
-  space: LayoutSpace;
+type TaskEdge = Edge<TaskEdgeData, 'task'>;
+
+interface IconProps {
+  glyph: EditorGlyph;
+  className?: string;
 }
 
-const baseNodes: AgentNode[] = [
-  { id: 'trigger', label: 'New message', short: 'Trigger', kind: 'trigger' },
-  { id: 'kb', label: 'Knowledge base', short: 'Knowledge', kind: 'knowledge base' },
-  { id: 'search', label: 'Online search', short: 'Search', kind: 'online search' },
-  { id: 'llm', label: 'Draft answer', short: 'LLM', kind: 'llm' },
-  { id: 'follow', label: 'Follow-up', short: 'Follow-up', kind: 'follow-up' },
-  { id: 'telegram', label: 'Telegram', short: 'Telegram', kind: 'social' },
+interface Graph {
+  tasks: Task[];
+  edges: DagEdge[];
+}
+
+const starterTasks: Task[] = [
+  { id: 'collect', kind: Kind.TOOL, name: 'Follow-up', detail: 'Ask the recruiter for the details', glyph: Lucide.MESSAGES_SQUARE, color: '#8ab4ff' },
+  { id: 'ocr', kind: Kind.TOOL, name: 'File upload (OCR)', detail: 'Read the job description PDF', glyph: Lucide.UPLOAD, color: '#e6a03a' },
+  { id: 'search', kind: Kind.AGENT, name: 'Search online', detail: 'Find the letter template and tone', glyph: Lucide.BOT, color: '#b4a2ff' },
+  { id: 'write', kind: Kind.AGENT, name: 'Start Writing', detail: 'Draft the letter from tasks 1 to 3', glyph: Lucide.BOT, color: '#94cc7a' },
+  { id: 'mail', kind: Kind.TOOL, name: 'Send Mail', detail: 'Email the letter as a PDF', glyph: Lucide.MAIL, color: '#8ab4ff' },
+  { id: 'meeting', kind: Kind.TOOL, name: 'Meeting', detail: 'Book a welcome call for day one', glyph: Lucide.CALENDAR, color: '#f08fbf' },
 ];
 
-const summarize: AgentNode = { id: 'summary', label: 'Summarize', short: 'Summary', kind: 'text generation' };
-
-const candidates: Candidate[] = [
-  { key: 'trigger-kb', from: 'trigger', to: 'kb' },
-  { key: 'trigger-search', from: 'trigger', to: 'search' },
-  { key: 'kb-llm', from: 'kb', to: 'llm' },
-  { key: 'search-llm', from: 'search', to: 'llm' },
-  { key: 'llm-follow', from: 'llm', to: 'follow' },
-  { key: 'llm-telegram', from: 'llm', to: 'telegram' },
-  { key: 'follow-telegram', from: 'follow', to: 'telegram' },
-  { key: 'telegram-kb', from: 'telegram', to: 'kb' },
+/** What + adds, in turn. */
+const extraTasks: Task[] = [
+  { id: 'telegram', kind: Kind.TOOL, name: 'Telegram', detail: 'Tell the recruiter it has gone out', glyph: Lucide.SEND, color: '#8ab4ff' },
+  { id: 'summary', kind: Kind.AGENT, name: 'Summarize', detail: 'Brief the hiring manager in a line', glyph: Lucide.BOT, color: '#c7f36b' },
+  { id: 'review', kind: Kind.TOOL, name: 'Review', detail: 'Ask the recruiter to approve it', glyph: Lucide.MESSAGES_SQUARE, color: '#8ab4ff' },
 ];
 
-const INITIAL = new Set(['trigger-kb', 'trigger-search', 'kb-llm', 'search-llm', 'llm-follow', 'llm-telegram']);
-const SAVE_DELAY = 900;
+const starterEdges: DagEdge[] = [
+  { from: 'collect', to: 'ocr' },
+  { from: 'collect', to: 'search' },
+  { from: 'ocr', to: 'write' },
+  { from: 'search', to: 'write' },
+  { from: 'write', to: 'mail' },
+  { from: 'write', to: 'meeting' },
+];
 
-const wideSpace: LayoutSpace = { width: 760, height: 340, nodeW: 150, nodeH: 58, vertical: false };
-const narrowSpace: LayoutSpace = { width: 360, height: 560, nodeW: 104, nodeH: 52, vertical: true };
+const NODE_WIDTH = 196;
+const NODE_HEIGHT = 124;
+const wideLayout: LayoutOptions = { nodeWidth: NODE_WIDTH, nodeHeight: NODE_HEIGHT, gapMain: 72, gapCross: 28, vertical: false };
+const narrowLayout: LayoutOptions = { ...wideLayout, gapMain: 56, gapCross: 20, vertical: true };
+const FIT = { padding: 0.14 } as const;
+const MOVE_MS = 420;
+const SAVE_MS = 900;
 
-/** Places nodes by dependency depth: columns on wide screens, rows on narrow ones. */
-function layout({ nodes, depth, space }: LayoutRequest): Map<string, Point> {
-  const layers = new Map<number, AgentNode[]>();
-  for (const node of nodes) {
-    const d = depth.get(node.id) ?? 0;
-    layers.set(d, [...(layers.get(d) ?? []), node]);
-  }
-  const maxDepth = Math.max(0, ...layers.keys());
-  const positions = new Map<string, Point>();
-  const mainSpan = (space.vertical ? space.height - space.nodeH : space.width - space.nodeW) - 32;
-  const crossSize = space.vertical ? space.width : space.height;
-  const crossNode = space.vertical ? space.nodeW : space.nodeH;
-  for (const [d, members] of layers) {
-    const main = 16 + (maxDepth === 0 ? 0 : (d / maxDepth) * mainSpan);
-    members.forEach((node, index) => {
-      const slot = crossSize / members.length;
-      const cross = slot * index + (slot - crossNode) / 2;
-      positions.set(node.id, space.vertical ? { x: cross, y: main } : { x: main, y: cross });
-    });
-  }
-  return positions;
+const edgeId = (edge: DagEdge) => `${edge.from}->${edge.to}`;
+
+function planOf({ tasks, edges }: Graph): ExecutionPlan {
+  return executionPlan(
+    tasks.map((task) => task.id),
+    edges,
+  );
 }
 
-function edgePath({ from, to, space }: EdgeRequest): string {
-  if (space.vertical) {
-    const sx = from.x + space.nodeW / 2;
-    const sy = from.y + space.nodeH;
-    const tx = to.x + space.nodeW / 2;
-    const ty = to.y;
-    const k = Math.max(20, (ty - sy) / 2);
-    return `M${sx} ${sy}C${sx} ${sy + k} ${tx} ${ty - k} ${tx} ${ty}`;
-  }
-  const sx = from.x + space.nodeW;
-  const sy = from.y + space.nodeH / 2;
-  const tx = to.x;
-  const ty = to.y + space.nodeH / 2;
-  const k = Math.max(24, (tx - sx) / 2);
-  return `M${sx} ${sy}C${sx + k} ${sy} ${tx - k} ${ty} ${tx} ${ty}`;
+function Icon({ glyph, className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      viewBox={`0 0 ${glyph.box} ${glyph.box}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={glyph.strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {glyph.paths.map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </svg>
+  );
+}
+
+function TaskNodeView({ data }: NodeProps<TaskNode>) {
+  const { task, order, pending, vertical, canAdd, onAdd } = data;
+  return (
+    <div className="ag-node" data-kind={task.kind} data-pending={pending || undefined} style={{ '--task': task.color } as CSSProperties}>
+      <Handle type="target" position={vertical ? Position.Top : Position.Left} className="ag-handle ag-handle-in" />
+      <div className="ag-head">
+        <span className="ag-name">{task.name}</span>
+        <span className="ag-order">#{order}</span>
+      </div>
+      <div className="ag-kind">
+        <span className="ag-disc">
+          <Icon glyph={task.glyph} className="ag-icon" />
+        </span>
+        {pending ? 'saving…' : task.kind}
+      </div>
+      <p className="ag-detail">{task.detail}</p>
+      <Handle type="source" position={vertical ? Position.Bottom : Position.Right} className="ag-handle ag-handle-out" />
+      {canAdd ? (
+        <button type="button" className="ag-add nodrag" onClick={() => onAdd(task.id)} aria-label={`Add a task after ${task.name}`}>
+          <Icon glyph={Lucide.PLUS} className="ag-icon" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** React Flow's bezier, with a remove button at its middle once the connection is selected. */
+function TaskEdgeView({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, selected, data }: EdgeProps<TaskEdge>) {
+  const [path, labelX, labelY] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition });
+  return (
+    <>
+      <BaseEdge id={id} path={path} style={style} />
+      {selected && data ? (
+        <EdgeLabelRenderer>
+          <button
+            type="button"
+            className="ag-remove nodrag nopan"
+            style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
+            onClick={() => data.onRemove(id)}
+            aria-label={`Remove ${data.label}`}
+          >
+            <Icon glyph={Lucide.X} className="ag-icon" />
+          </button>
+        </EdgeLabelRenderer>
+      ) : null}
+    </>
+  );
+}
+
+const nodeTypes = { task: TaskNodeView };
+const edgeTypes = { task: TaskEdgeView };
+
+function placeNodes(graph: Graph, options: LayoutOptions): TaskNode[] {
+  const positions = autoLayout({ plan: planOf(graph), options });
+  return graph.tasks.map((task) => ({
+    id: task.id,
+    type: 'task',
+    position: positions.get(task.id) ?? { x: 0, y: 0 },
+    deletable: false,
+    data: { task, order: 0, pending: false, vertical: options.vertical, canAdd: false, onAdd: () => undefined },
+  }));
 }
 
 export default function ExecutionOrderDemo() {
-  const [active, setActive] = useState<Set<string>>(() => new Set(INITIAL));
-  const [extraNode, setExtraNode] = useState<'none' | 'pending' | 'saved'>('none');
-  const [message, setMessage] = useState('');
   const vertical = useMediaQuery('(max-width: 39.99rem)');
+  const options = vertical ? narrowLayout : wideLayout;
+  const [graph, setGraph] = useState<Graph>({ tasks: starterTasks, edges: starterEdges });
+  const [nodes, setNodes] = useState<TaskNode[]>(() => placeNodes({ tasks: starterTasks, edges: starterEdges }, wideLayout));
+  const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [flow, setFlow] = useState<ReactFlowInstance<TaskNode, TaskEdge> | null>(null);
+  const [from, setFrom] = useState('meeting');
+  const [to, setTo] = useState('collect');
+  const frame = useRef(0);
   const timer = useRef<number | undefined>(undefined);
+  const nodesRef = useRef(nodes);
+  const graphRef = useRef(graph);
 
-  useEffect(() => () => window.clearTimeout(timer.current), []);
+  useEffect(() => {
+    nodesRef.current = nodes;
+    graphRef.current = graph;
+  }, [nodes, graph]);
 
-  const space = vertical ? narrowSpace : wideSpace;
-  const nodes = useMemo(() => (extraNode === 'none' ? baseNodes : [...baseNodes, summarize]), [extraNode]);
-  const edges = useMemo<DagEdge[]>(() => {
-    const list: DagEdge[] = candidates.filter((candidate) => active.has(candidate.key));
-    if (extraNode !== 'none') list.push({ from: 'llm', to: 'summary' });
-    return list;
-  }, [active, extraNode]);
+  const plan = useMemo(() => planOf(graph), [graph]);
+  const orderOf = useMemo(() => new Map(plan.order.map((id, index) => [id, index + 1])), [plan]);
+  const taskOf = useMemo(() => new Map(graph.tasks.map((task) => [task.id, task])), [graph]);
+  const nameOf = useCallback((id: string) => taskOf.get(id)?.name ?? id, [taskOf]);
+  const nextExtra = extraTasks.find((task) => !taskOf.has(task.id));
 
-  const plan = useMemo(() => executionPlan(nodes.map((node) => node.id), edges), [nodes, edges]);
-  const positions = useMemo(() => layout({ nodes, depth: plan.depth, space }), [nodes, plan, space]);
-  const orderOf = new Map(plan.order.map((id, index) => [id, index + 1]));
-  const labelOf = new Map(nodes.map((node) => [node.id, node.label]));
+  /** Moves every task to the auto-layout for `next`, new tasks sliding out of `origin`. */
+  const settle = useCallback(
+    (next: Graph, origin?: string) => {
+      const targets = autoLayout({ plan: planOf(next), options });
+      const start = new Map(nodesRef.current.map((node) => [node.id, node.position]));
+      const spawn = origin ? start.get(origin) : undefined;
+      const known = new Set(start.keys());
+      setNodes((current) => [
+        ...current.filter((node) => next.tasks.some((task) => task.id === node.id)),
+        ...next.tasks
+          .filter((task) => !known.has(task.id))
+          .map<TaskNode>((task) => ({
+            id: task.id,
+            type: 'task',
+            position: spawn ?? targets.get(task.id) ?? { x: 0, y: 0 },
+            deletable: false,
+            data: { task, order: 0, pending: true, vertical: options.vertical, canAdd: false, onAdd: () => undefined },
+          })),
+      ]);
+      window.cancelAnimationFrame(frame.current);
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const began = performance.now();
+      const step = (now: number) => {
+        const t = reduce ? 1 : Math.min(1, (now - began) / MOVE_MS);
+        const eased = 1 - (1 - t) ** 3;
+        setNodes((current) =>
+          current.map((node) => {
+            const target = targets.get(node.id);
+            if (!target) return node;
+            const begin = start.get(node.id) ?? spawn ?? target;
+            return { ...node, position: { x: begin.x + (target.x - begin.x) * eased, y: begin.y + (target.y - begin.y) * eased } };
+          }),
+        );
+        if (t < 1) frame.current = window.requestAnimationFrame(step);
+        else flow?.fitView({ ...FIT, duration: reduce ? 0 : 300 });
+      };
+      frame.current = window.requestAnimationFrame(step);
+    },
+    [options, flow],
+  );
 
-  const toggle = (candidate: Candidate) => {
-    if (active.has(candidate.key)) {
-      const next = new Set(active);
-      next.delete(candidate.key);
-      setActive(next);
-      setMessage(`Disconnected ${labelOf.get(candidate.from)} from ${labelOf.get(candidate.to)}. Order and layout updated.`);
-      return;
-    }
-    if (createsCycle(edges, candidate)) {
-      setMessage(
-        `${labelOf.get(candidate.from)} → ${labelOf.get(candidate.to)} would create a loop, so it wasn’t added. Execution order has to stay acyclic.`,
-      );
-      return;
-    }
-    setActive(new Set(active).add(candidate.key));
-    setMessage(`Connected ${labelOf.get(candidate.from)} to ${labelOf.get(candidate.to)}. Order and layout updated.`);
-  };
+  // Lay out again when the screen switches between wide and narrow, or the canvas first reports in.
+  useEffect(() => {
+    settle(graphRef.current);
+  }, [settle]);
 
-  const addNode = () => {
-    setExtraNode('pending');
-    setMessage('Summarize appears immediately while it saves in the background.');
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      setExtraNode('saved');
-      setMessage('Summarize saved. It runs after Draft answer.');
-    }, SAVE_DELAY);
-  };
+  useEffect(
+    () => () => {
+      window.cancelAnimationFrame(frame.current);
+      window.clearTimeout(timer.current);
+    },
+    [],
+  );
+
+  const apply = useCallback(
+    (next: Graph, origin?: string) => {
+      setGraph(next);
+      settle(next, origin);
+    },
+    [settle],
+  );
+
+  const connect = useCallback(
+    (source: string, target: string) => {
+      if (source === target) {
+        setMessage(`${nameOf(source)} can’t feed itself.`);
+        return;
+      }
+      if (graph.edges.some((edge) => edge.from === source && edge.to === target)) {
+        setMessage(`${nameOf(source)} already feeds ${nameOf(target)}.`);
+        return;
+      }
+      if (createsCycle(graph.edges, { from: source, to: target })) {
+        setMessage(`${nameOf(source)} → ${nameOf(target)} would loop back, so it wasn’t added. The run order has to stay acyclic.`);
+        return;
+      }
+      apply({ ...graph, edges: [...graph.edges, { from: source, to: target }] });
+      setMessage(`Connected ${nameOf(source)} to ${nameOf(target)}. Run order and layout updated.`);
+    },
+    [apply, graph, nameOf],
+  );
+
+  const remove = useCallback(
+    (id: string) => {
+      const edge = graph.edges.find((candidate) => edgeId(candidate) === id);
+      if (!edge) return;
+      apply({ ...graph, edges: graph.edges.filter((candidate) => candidate !== edge) });
+      setSelectedEdge(null);
+      setMessage(`Disconnected ${nameOf(edge.from)} from ${nameOf(edge.to)}. Run order and layout updated.`);
+    },
+    [apply, graph, nameOf],
+  );
+
+  const add = useCallback(
+    (origin: string) => {
+      if (!nextExtra || pending) return;
+      const next = { tasks: [...graph.tasks, nextExtra], edges: [...graph.edges, { from: origin, to: nextExtra.id }] };
+      apply(next, origin);
+      setPending(nextExtra.id);
+      setMessage(`${nextExtra.name} is on the canvas right away while it saves.`);
+      const step = planOf(next).order.indexOf(nextExtra.id) + 1;
+      window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => {
+        setPending(null);
+        setMessage(`${nextExtra.name} saved. It runs at step ${step}.`);
+      }, SAVE_MS);
+    },
+    [apply, graph, nextExtra, pending],
+  );
 
   const reset = () => {
     window.clearTimeout(timer.current);
-    setActive(new Set(INITIAL));
-    setExtraNode('none');
-    setMessage('Reset to the starting graph.');
+    setPending(null);
+    setSelectedEdge(null);
+    apply({ tasks: starterTasks, edges: starterEdges });
+    setMessage('Back to the starting assistant.');
   };
 
-  const pct = (value: number, total: number) => `${(value / total) * 100}%`;
+  const tidy = () => {
+    settle(graph);
+    setMessage('Laid out again from the edges.');
+  };
+
+  const isValidConnection = useCallback(
+    (connection: Connection | Edge) =>
+      connection.source !== connection.target &&
+      !graph.edges.some((edge) => edge.from === connection.source && edge.to === connection.target) &&
+      !createsCycle(graph.edges, { from: connection.source, to: connection.target }),
+    [graph],
+  );
+
+  // A drop the canvas refused still deserves a reason.
+  const onConnectEnd = useCallback(
+    (_: MouseEvent | TouchEvent, state: FinalConnectionState) => {
+      if (state.isValid !== false || !state.fromNode || !state.toNode) return;
+      const outward = state.fromHandle?.type === 'source';
+      connect(outward ? state.fromNode.id : state.toNode.id, outward ? state.toNode.id : state.fromNode.id);
+    },
+    [connect],
+  );
+
+  const onNodesChange = useCallback((changes: NodeChange<TaskNode>[]) => {
+    setNodes((current) => applyNodeChanges(changes, current));
+  }, []);
+
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange<TaskEdge>[]) => {
+      for (const change of changes) {
+        if (change.type === 'select') setSelectedEdge((current) => (change.selected ? change.id : current === change.id ? null : current));
+        if (change.type === 'remove') remove(change.id);
+      }
+    },
+    [remove],
+  );
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    connect(from, to);
+  };
+
+  const viewNodes = useMemo(
+    () =>
+      nodes.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          task: taskOf.get(node.id) ?? node.data.task,
+          order: orderOf.get(node.id) ?? 0,
+          pending: node.id === pending,
+          vertical,
+          canAdd: Boolean(nextExtra) && !pending,
+          onAdd: add,
+        },
+      })),
+    [nodes, taskOf, orderOf, pending, vertical, nextExtra, add],
+  );
+
+  const viewEdges = useMemo<TaskEdge[]>(
+    () =>
+      graph.edges.map((edge) => {
+        const id = edgeId(edge);
+        const selected = id === selectedEdge;
+        return {
+          id,
+          type: 'task',
+          source: edge.from,
+          target: edge.to,
+          selected,
+          data: { label: `${nameOf(edge.from)} → ${nameOf(edge.to)}`, onRemove: remove },
+          style: {
+            stroke: selected ? '#f4f1e8' : (taskOf.get(edge.from)?.color ?? '#a9a79c'),
+            strokeWidth: selected ? 2.75 : 2,
+            strokeDasharray: edge.to === pending ? '6 6' : undefined,
+          },
+        };
+      }),
+    [graph, selectedEdge, nameOf, remove, taskOf, pending],
+  );
+
+  const layers = layersOf(plan);
 
   return (
     <DemoFrame
       title="Rewire the agent"
-      instructions="Connect and disconnect tasks. The execution order and the auto-layout recompute from the edges on every change. Try a connection that would loop back, or add a node optimistically."
+      instructions="Drag from a task’s right-hand port to another task to connect them, select a connection to remove it, or press + to add a task. The run order and the layout follow the edges on every change, and a connection that would loop back is refused."
       note="A simplified reconstruction for this portfolio. iGOT.ai Studio’s engine syncs these edges with the backend; here the order is computed in the browser."
     >
-      <LazyMotion features={domAnimation} strict>
-        <MotionConfig reducedMotion="user" transition={{ type: 'tween', duration: 0.45, ease: [0.16, 1, 0.3, 1] }}>
-          <div className="eo-layout">
-            <div className="eo-canvas" style={{ aspectRatio: `${space.width} / ${space.height}` }}>
-              <svg
-                className="eo-edges"
-                viewBox={`0 0 ${space.width} ${space.height}`}
-                preserveAspectRatio="none"
-                aria-hidden="true"
-              >
-                {edges.map((edge) => {
-                  const from = positions.get(edge.from);
-                  const to = positions.get(edge.to);
-                  if (!from || !to) return null;
-                  return (
-                    <m.path
-                      key={`${edge.from}-${edge.to}`}
-                      initial={false}
-                      animate={{ d: edgePath({ from, to, space }) }}
-                      className="eo-edge"
-                      data-pending={edge.to === 'summary' && extraNode === 'pending' ? true : undefined}
-                    />
-                  );
-                })}
-              </svg>
-              {nodes.map((node) => {
-                const point = positions.get(node.id) ?? { x: 0, y: 0 };
-                const pending = node.id === 'summary' && extraNode === 'pending';
-                return (
-                  <m.div
-                    key={node.id}
-                    className="eo-node"
-                    data-pending={pending || undefined}
-                    initial={node.id === 'summary' ? { opacity: 0, scale: 0.9 } : false}
-                    animate={{
-                      left: pct(point.x, space.width),
-                      top: pct(point.y, space.height),
-                      opacity: 1,
-                      scale: 1,
-                    }}
-                    style={{ width: pct(space.nodeW, space.width), height: pct(space.nodeH, space.height) }}
-                  >
-                    <span className="eo-badge" aria-hidden="true">
-                      {orderOf.get(node.id) ?? '…'}
-                    </span>
-                    <span className="eo-kind type-mono">{pending ? 'saving…' : node.kind}</span>
-                    <span className="eo-label">{vertical ? node.short : node.label}</span>
-                  </m.div>
-                );
-              })}
-            </div>
+      <div className="ag-layout">
+        <div className="ag-canvas">
+          <div className="ag-toolbar">
+            <button type="button" className="ag-chip" onClick={tidy}>
+              <Icon glyph={Lucide.LAYOUT_GRID} className="ag-icon" />
+              Auto Layout
+            </button>
+            <button type="button" className="ag-chip" onClick={reset}>
+              Reset
+            </button>
+          </div>
+          <ReactFlow
+            nodes={viewNodes}
+            edges={viewEdges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={(connection) => connect(connection.source, connection.target)}
+            onConnectEnd={onConnectEnd}
+            isValidConnection={isValidConnection}
+            onPaneClick={() => setSelectedEdge(null)}
+            onInit={setFlow}
+            connectionLineStyle={{ stroke: '#f4f1e8', strokeWidth: 2, strokeDasharray: '6 6' }}
+            fitView
+            fitViewOptions={FIT}
+            panOnDrag={false}
+            zoomOnScroll={false}
+            zoomOnDoubleClick={false}
+            preventScrolling={false}
+            minZoom={0.2}
+            maxZoom={1.25}
+            aria-label="Agent workflow canvas"
+            style={{ flex: 1, minHeight: 0, height: 'auto' }}
+          >
+            <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} color="rgba(244,241,232,0.1)" />
+          </ReactFlow>
+        </div>
 
-            <div className="eo-panel">
-              <fieldset>
-                <legend className="type-small font-[600]">Connections</legend>
-                <ul className="eo-toggles">
-                  {candidates.map((candidate) => (
-                    <li key={candidate.key}>
-                      <label className="pd-check">
-                        <input type="checkbox" checked={active.has(candidate.key)} onChange={() => toggle(candidate)} />
-                        {labelOf.get(candidate.from)} → {labelOf.get(candidate.to)}
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              </fieldset>
-              <div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="demo-button demo-button-strong"
-                    onClick={addNode}
-                    disabled={extraNode !== 'none'}
-                  >
-                    Add Summarize node
-                  </button>
-                  <button type="button" className="demo-button" onClick={reset}>
-                    Reset
-                  </button>
-                </div>
-                <p className="type-small mt-3 min-h-[3em] text-graphite" aria-live="polite">
-                  {message}
-                </p>
-              </div>
-              <div className="eo-order">
-                <p className="type-small font-[600]">Execution order</p>
-                <ol>
-                  {plan.order.map((id) => (
-                    <li key={id}>
-                      <span className="eo-badge eo-badge-inline" aria-hidden="true">
+        <div className="ag-panel">
+          <div>
+            <p className="type-small font-[600]">Run order</p>
+            <ol className="ag-run">
+              {layers.flatMap((layer, layerIndex) =>
+                layer.map((id, slot) => {
+                  const task = taskOf.get(id);
+                  return (
+                    <li key={id} data-layer-start={slot === 0 && layerIndex > 0 ? true : undefined} data-pending={id === pending || undefined}>
+                      <span className="ag-run-order" aria-hidden="true">
                         {orderOf.get(id)}
                       </span>
-                      {labelOf.get(id)}
+                      <span className="ag-run-dot" data-kind={task?.kind} aria-hidden="true" />
+                      {nameOf(id)}
+                      <span className="ag-run-layer">{id === pending ? 'saving' : `layer ${layerIndex + 1}`}</span>
                     </li>
-                  ))}
-                </ol>
-              </div>
-            </div>
+                  );
+                }),
+              )}
+            </ol>
           </div>
-        </MotionConfig>
-      </LazyMotion>
+
+          <div className="grid content-start gap-4">
+            <form className="ag-connect" onSubmit={submit}>
+              <label>
+                <span className="type-small font-[600]">From</span>
+                <select className="demo-select" value={from} onChange={(event) => setFrom(event.target.value)}>
+                  {graph.tasks.map((task) => (
+                    <option key={task.id} value={task.id}>
+                      {task.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span className="type-small font-[600]">To</span>
+                <select className="demo-select" value={to} onChange={(event) => setTo(event.target.value)}>
+                  {graph.tasks.map((task) => (
+                    <option key={task.id} value={task.id}>
+                      {task.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="submit" className="demo-button demo-button-strong">
+                Connect
+              </button>
+            </form>
+            <p className="type-small min-h-[3em] text-graphite" aria-live="polite">
+              {message || 'The run order is worked out from the edges: a task runs once everything feeding it has.'}
+            </p>
+          </div>
+        </div>
+      </div>
     </DemoFrame>
   );
 }

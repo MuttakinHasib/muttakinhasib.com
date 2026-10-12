@@ -14,6 +14,27 @@ export interface ExecutionPlan {
   depth: Map<string, number>;
 }
 
+export interface LayoutOptions {
+  nodeWidth: number;
+  nodeHeight: number;
+  /** Space between layers, along the direction the graph runs. */
+  gapMain: number;
+  /** Space between tasks in the same layer. */
+  gapCross: number;
+  /** Top to bottom instead of left to right, for narrow screens. */
+  vertical: boolean;
+}
+
+export interface Position {
+  x: number;
+  y: number;
+}
+
+export interface LayoutRequest {
+  plan: ExecutionPlan;
+  options: LayoutOptions;
+}
+
 export function executionPlan(nodes: readonly string[], edges: readonly DagEdge[]): ExecutionPlan {
   const indegree = new Map(nodes.map((id) => [id, 0]));
   const outgoing = new Map<string, string[]>(nodes.map((id) => [id, []]));
@@ -57,4 +78,34 @@ export function createsCycle(edges: readonly DagEdge[], candidate: DagEdge): boo
     for (const edge of edges) if (edge.from === id) stack.push(edge.to);
   }
   return false;
+}
+
+/** The run order grouped by layer: tasks in the same layer have no edge between them. */
+export function layersOf(plan: ExecutionPlan): string[][] {
+  const layers: string[][] = [];
+  for (const id of plan.order) {
+    const depth = plan.depth.get(id) ?? 0;
+    (layers[depth] ??= []).push(id);
+  }
+  return layers.filter((layer) => layer.length > 0);
+}
+
+/**
+ * Auto-layout: one column per layer, left to right (or one row per layer, top
+ * to bottom), each layer centred on the same line, tasks in run order.
+ */
+export function autoLayout({ plan, options }: LayoutRequest): Map<string, Position> {
+  const { nodeWidth, nodeHeight, gapMain, gapCross, vertical } = options;
+  const along = vertical ? nodeHeight : nodeWidth;
+  const across = vertical ? nodeWidth : nodeHeight;
+  const positions = new Map<string, Position>();
+  layersOf(plan).forEach((layer, index) => {
+    const main = index * (along + gapMain);
+    const span = layer.length * across + (layer.length - 1) * gapCross;
+    layer.forEach((id, slot) => {
+      const cross = -span / 2 + slot * (across + gapCross);
+      positions.set(id, vertical ? { x: cross, y: main } : { x: main, y: cross });
+    });
+  });
+  return positions;
 }

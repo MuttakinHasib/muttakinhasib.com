@@ -3716,129 +3716,6 @@
     font-weight: 600;
   }
 
-  /* Execution order */
-  .eo-layout {
-    display: grid;
-    gap: 1.25rem;
-  }
-
-  .eo-panel {
-    display: grid;
-    gap: 1.25rem;
-    align-items: start;
-  }
-
-  @media (width >= 64rem) {
-    .eo-panel {
-      grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
-    }
-  }
-
-  .eo-canvas {
-    position: relative;
-    width: 100%;
-    border-radius: 6px;
-    background-color: var(--color-surface);
-    background-image: radial-gradient(circle at 1px 1px, rgba(23, 24, 21, 0.18) 1px, transparent 0);
-    background-size: 22px 22px;
-  }
-
-  .eo-edges {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-  }
-
-  .eo-edge {
-    fill: none;
-    stroke: var(--color-ink);
-    stroke-width: 1.5;
-    vector-effect: non-scaling-stroke;
-  }
-
-  .eo-edge[data-pending] {
-    stroke-dasharray: 5 5;
-  }
-
-  .eo-node {
-    position: absolute;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 0.3rem 0.6rem;
-    background: var(--color-paper);
-    border: 1px solid var(--color-ink);
-    border-radius: var(--radius-node);
-    overflow: visible;
-  }
-
-  .eo-node[data-pending] {
-    border-style: dashed;
-    background: #fbfaf6;
-  }
-
-  .eo-kind {
-    color: var(--color-graphite);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .eo-label {
-    font-size: clamp(0.75rem, 0.6rem + 0.5vw, 0.9375rem);
-    font-weight: 600;
-    line-height: 1.15;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .eo-badge {
-    position: absolute;
-    top: -0.7rem;
-    right: -0.55rem;
-    display: grid;
-    place-items: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--color-ink);
-    background: var(--color-agent);
-    border: 1px solid var(--color-ink);
-    border-radius: 999px;
-  }
-
-  .eo-badge-inline {
-    position: static;
-    display: inline-grid;
-    margin-right: 0.6rem;
-  }
-
-  .eo-node[data-pending] .eo-badge {
-    background: #fbfaf6;
-    border-style: dashed;
-  }
-
-  .eo-toggles {
-    display: grid;
-    margin-top: 0.4rem;
-  }
-
-  .eo-order ol {
-    display: grid;
-    gap: 0.35rem;
-    margin-top: 0.5rem;
-  }
-
-  .eo-order li {
-    display: flex;
-    align-items: center;
-    font-size: 0.9375rem;
-  }
-
   /* ───────────────────────── Work index ───────────────────────── */
   .work-list {
     border-top: 1px solid var(--color-ink);
@@ -4832,4 +4709,303 @@
   color: var(--color-paper);
   border-radius: 6px;
   background: #0f0f0f;
+}
+
+/* iGOT.ai: rewire the agent, on React Flow (unlayered to override its base styles) */
+.ag-layout {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.ag-canvas {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: clamp(24rem, 42vw, 32rem);
+  overflow: hidden;
+  color: var(--color-paper);
+  border-radius: 10px;
+  background: #0f0f0f;
+}
+
+.ag-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem 0.75rem 0;
+}
+
+.ag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  font-size: 0.9375rem;
+  font-weight: 560;
+  color: var(--color-paper);
+  border: 1px solid #30302c;
+  border-radius: 999px;
+  background: #1b1b1a;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.ag-chip:hover {
+  background: #262624;
+  box-shadow: 0 0 0 1.5px var(--color-signal);
+}
+
+.ag-icon {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+}
+
+.ag-node {
+  --kind: #8ab4ff;
+  --kind-fill: #141b29;
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 0.55rem;
+  width: 196px;
+  height: 124px;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.8125rem;
+  color: var(--color-paper);
+  border: 1.5px solid var(--kind);
+  border-radius: 12px;
+  background: var(--kind-fill);
+  transition: opacity 200ms ease, box-shadow 160ms ease;
+}
+
+.ag-node[data-kind="agent"] {
+  --kind: #3fbf7f;
+  --kind-fill: #13231a;
+}
+
+.ag-node[data-pending] {
+  opacity: 0.78;
+  border-style: dashed;
+  border-color: rgba(244, 241, 232, 0.7);
+  background: #1b1b1a;
+}
+
+.react-flow__node.selected .ag-node {
+  box-shadow: 0 0 0 2px rgba(244, 241, 232, 0.55);
+}
+
+.ag-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.ag-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ag-order {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--kind);
+}
+
+.ag-kind {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-fog);
+}
+
+.ag-disc {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  color: var(--kind);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--kind) 16%, transparent);
+}
+
+.ag-disc .ag-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.ag-detail {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 1.35;
+  color: var(--color-fog);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.ag-canvas .react-flow__handle.ag-handle {
+  width: 11px;
+  height: 11px;
+  min-width: 0;
+  min-height: 0;
+  border: 2px solid #0f0f0f;
+  border-radius: 999px;
+}
+
+.ag-canvas .react-flow__handle.ag-handle-out {
+  background: var(--task);
+}
+
+.ag-canvas .react-flow__handle.ag-handle-in {
+  background: #0f0f0f;
+  border-color: var(--kind);
+}
+
+.ag-canvas .react-flow__handle.connectingto.valid {
+  background: var(--color-signal);
+  border-color: var(--color-signal);
+}
+
+.ag-canvas .react-flow__handle.connectingto:not(.valid) {
+  background: var(--color-mask);
+  border-color: var(--color-mask);
+}
+
+.ag-add {
+  position: absolute;
+  right: -13px;
+  bottom: -13px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--color-ink);
+  border: 2px solid #0f0f0f;
+  border-radius: 999px;
+  background: var(--color-signal);
+  cursor: pointer;
+  transition: transform 160ms ease;
+}
+
+.ag-add:hover {
+  transform: scale(1.12);
+}
+
+.ag-remove {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--color-ink);
+  border: 2px solid #0f0f0f;
+  border-radius: 999px;
+  background: var(--color-paper);
+  pointer-events: all;
+  cursor: pointer;
+}
+
+.ag-canvas .react-flow__edge.selectable {
+  cursor: pointer;
+}
+
+.ag-canvas .react-flow__attribution {
+  font-size: 10px;
+  background: transparent;
+}
+
+.ag-canvas .react-flow__attribution a {
+  color: var(--color-fog);
+}
+
+.ag-panel {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (width >= 64rem) {
+  .ag-panel {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  }
+}
+
+.ag-run {
+  display: grid;
+  margin-top: 0.5rem;
+}
+
+.ag-run li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2.25rem;
+  font-size: 0.9375rem;
+}
+
+.ag-run li[data-layer-start] {
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid color-mix(in oklab, var(--color-ink) 14%, transparent);
+}
+
+.ag-run li[data-pending] {
+  color: var(--color-graphite);
+}
+
+.ag-run-order {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-agent);
+}
+
+.ag-run li[data-pending] .ag-run-order {
+  border-style: dashed;
+  background: transparent;
+}
+
+.ag-run-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #3f6fd1;
+}
+
+.ag-run-dot[data-kind="agent"] {
+  background: #2f9e63;
+}
+
+.ag-run-layer {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-graphite);
+}
+
+.ag-connect {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.ag-connect label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.ag-connect button {
+  grid-column: 1 / -1;
 }
