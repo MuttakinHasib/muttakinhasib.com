@@ -4,7 +4,7 @@ import { FeatureLayout, variantForSlug } from './feature-layout';
 export function SelectedWork() {
   return (
     <section id="work" aria-labelledby="work-title" className="selected-work">
-      <div className="shell grid-12 gap-y-6 pb-16 pt-24 lg:pb-24 lg:pt-36">
+      <div className="shell grid-12 gap-y-6 pb-[calc(var(--space-section)*2/3)] pt-[var(--space-section)]">
         <h2 id="work-title" className="type-display col-span-4 md:col-span-7">
           Selected work
         </h2>

@@ -640,10 +640,10 @@ export function GraphCanvas({ model, children }: GraphCanvasProps) {
                       <TraceList label="Feeds" items={downstreamNodes} onSelect={select} />
                     ) : null}
                     {detail.outputs.length > 0 ? (
-                      <dl className="grid gap-1.5">
+                      <dl className="grid gap-1.5 lg:grid-cols-2 lg:gap-x-5 lg:gap-y-3">
                         {detail.outputs.map((output) => (
-                          <div key={output.label} className="flex items-baseline gap-3">
-                            <dt className="type-figure min-w-[4.5ch] text-[1.35rem]">{output.value}</dt>
+                          <div key={output.label} className="flex items-baseline gap-3 lg:flex-col lg:gap-1">
+                            <dt className="type-figure min-w-[4.5ch] whitespace-nowrap text-[1.35rem]">{output.value}</dt>
                             <dd className="type-small text-graphite">{output.label}</dd>
                           </div>
                         ))}
