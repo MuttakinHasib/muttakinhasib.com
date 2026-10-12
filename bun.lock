@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "muttakinhasib.github.io",
+      "name": "muttakinhasib.com",
       "dependencies": {
         "@xyflow/react": "^12.12.0",
         "motion": "^14.1.0",
