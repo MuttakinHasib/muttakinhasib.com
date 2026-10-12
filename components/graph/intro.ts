@@ -31,8 +31,12 @@ export const INTRO = {
   inspectorWire: 1950,
   /** The signal pulse that runs the default plan once the map is up. */
   pulse: 2250,
-  /** The whole intro is over; routes kept alive by <Activity> don't replay it. */
-  done: 3000,
+  /**
+   * The whole intro is over; routes kept alive by <Activity> don't replay it.
+   * Outlasts the last default pulse (pulse, one 170ms column step, and the
+   * 1100ms run in globals.css), which would otherwise be cut mid-wire.
+   */
+  done: 3600,
 } as const;
 
 /** When each column of nodes appears. */
