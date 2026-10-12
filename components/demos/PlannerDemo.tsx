@@ -235,7 +235,7 @@ export default function PlannerDemo() {
     <DemoFrame
       title="Try Build App"
       instructions="Select nodes: click, Shift-drag to box-select, Cmd/Ctrl-click to add, or use the checklist. Then hover or focus Build App to preview the plan on the canvas: violet for inputs, amber for outputs, everything else dims. Click it to keep the preview on."
-      note="A simplified reconstruction of the planning rules, rebuilt for this portfolio. It is not ImagineArt’s production code."
+      note="A simplified reconstruction of the planning rules, rebuilt for this portfolio."
     >
       <div className="pd-layout">
         <div className="pd-canvas">
