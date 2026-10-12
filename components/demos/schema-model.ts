@@ -44,6 +44,8 @@ export interface LayoutOptions {
   gapX: number;
   /** Space between tables in a layer. */
   gapY: number;
+  /** Layers run top to bottom, tables in a layer side by side, for narrow canvases. */
+  vertical?: boolean;
 }
 
 export interface TablePosition {
@@ -162,7 +164,8 @@ export function tableHeight(table: SchemaTable, options: LayoutOptions): number 
 }
 
 /**
- * Positions for the layered layout: one column per layer, left to right.
+ * Positions for the layered layout: one column per layer, left to right (or
+ * one row per layer, top to bottom, when `vertical`).
  * Within a column, tables are ordered by the average slot of the tables they
  * connect to in earlier columns, so edges cross as little as this small graph
  * allows, and each column is centred on the same line.
@@ -188,6 +191,17 @@ export function layoutSchema(tables: readonly SchemaTable[], options: LayoutOpti
   });
 
   const positions = new Map<string, TablePosition>();
+  if (options.vertical) {
+    let y = 0;
+    columns.forEach((column, index) => {
+      const total = column.length * options.nodeWidth + options.gapY * Math.max(0, column.length - 1);
+      column.forEach((table, slot) => {
+        positions.set(table.name, { x: -total / 2 + slot * (options.nodeWidth + options.gapY), y, layer: index });
+      });
+      y += Math.max(0, ...column.map((table) => tableHeight(table, options))) + options.gapX;
+    });
+    return positions;
+  }
   columns.forEach((column, index) => {
     const heights = column.map((table) => tableHeight(table, options));
     const total = heights.reduce((sum, height) => sum + height, 0) + options.gapY * Math.max(0, column.length - 1);

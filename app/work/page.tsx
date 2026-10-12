@@ -21,8 +21,7 @@ export default function WorkPage() {
         <header className="shell grid-12 gap-y-6 pb-12 pt-[calc(var(--header-h)+clamp(3rem,10vh,7rem))] lg:pb-20">
           <h1 className="type-hero col-span-4 md:col-span-8">Selected work</h1>
           <p className="type-lead col-span-4 max-w-[40ch] text-graphite md:col-span-4 md:self-end">
-            Five case studies, each told at the level my resume supports: what was hard, what I decided, and what
-            changed.
+            Five case studies: what was hard, what I decided, and what changed.
           </p>
         </header>
 

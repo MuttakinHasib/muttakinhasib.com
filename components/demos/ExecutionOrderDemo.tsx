@@ -22,6 +22,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useElementWidth } from '@/lib/use-element-width';
 import type { EditorGlyph } from '../visuals/editor-icons';
 import { Lucide } from '../visuals/lucide-icons';
 import { DemoFrame } from './DemoFrame';
@@ -222,7 +223,7 @@ function placeNodes(graph: Graph, options: LayoutOptions): TaskNode[] {
 
 export default function ExecutionOrderDemo() {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [canvasWidth, setCanvasWidth] = useState(0);
+  const canvasWidth = useElementWidth(canvasRef);
   const vertical = canvasWidth > 0 && canvasWidth < NARROW_CANVAS;
   const options = vertical ? narrowLayout : wideLayout;
   const [graph, setGraph] = useState<Graph>({ tasks: starterTasks, edges: starterEdges });
@@ -300,14 +301,6 @@ export default function ExecutionOrderDemo() {
     },
     [],
   );
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const observer = new ResizeObserver(([entry]) => setCanvasWidth(entry?.contentRect.width ?? 0));
-    observer.observe(canvas);
-    return () => observer.disconnect();
-  }, []);
 
   const apply = useCallback(
     (next: Graph, origin?: string) => {

@@ -11,10 +11,12 @@ import {
   type NodeProps,
   Position,
   ReactFlow,
+  type ReactFlowInstance,
   SelectionMode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useElementWidth } from '@/lib/use-element-width';
 import { type AppPlan, planApp, type WorkflowEdgeSpec, WorkflowKind, type WorkflowNodeSpec } from './app-plan';
 import { Glyph } from '../visuals/editor-icons';
 import { DemoFrame } from './DemoFrame';
@@ -38,6 +40,8 @@ interface WorkflowData extends Record<string, unknown> {
   label: string;
   kind: WorkflowKind;
   role: PreviewRole | null;
+  /** Top to bottom with compact cards, on a narrow canvas. */
+  vertical: boolean;
 }
 
 type WorkflowNode = Node<WorkflowData, 'workflow'>;
@@ -94,6 +98,22 @@ const edgeSpecs: WorkflowEdgeSpec[] = [
   { source: 'upscale', target: 'video' },
 ];
 
+/** On a narrow canvas: three columns running top to bottom, so every wire points down and the labels stay legible. */
+const NARROW_POSITIONS: Record<string, { x: number; y: number }> = {
+  prompt: { x: 0, y: 0 },
+  reference: { x: 122, y: 0 },
+  style: { x: 244, y: 0 },
+  sound: { x: 0, y: 92 },
+  image: { x: 122, y: 92 },
+  upscale: { x: 61, y: 184 },
+  caption: { x: 183, y: 184 },
+  video: { x: 61, y: 276 },
+};
+const NARROW_CANVAS = 640;
+const FIT = { padding: 0.26 } as const;
+
+const positionOf = (spec: PositionedSpec, narrow: boolean) => (narrow ? (NARROW_POSITIONS[spec.id] ?? spec) : { x: spec.x, y: spec.y });
+
 const DEFAULT_SELECTION = new Set(['prompt', 'reference', 'image', 'upscale', 'video']);
 
 /** The editor's Build App icon, drawn from its own path data. */
@@ -111,17 +131,25 @@ function WorkflowNodeView({ data, selected }: NodeProps<WorkflowNode>) {
   const outputType = OUTPUT_TYPE[data.kind];
   const isSource = data.kind === WorkflowKind.TEXT_INPUT || data.kind === WorkflowKind.IMAGE_INPUT;
   return (
-    <div className="pd-node" data-selected={selected || undefined} data-role={data.role ?? undefined}>
+    <div className="pd-node" data-selected={selected || undefined} data-role={data.role ?? undefined} data-compact={data.vertical || undefined}>
       <div className="pd-node-label">
         <span>{data.label}</span>
         <span className="pd-node-kind">{KIND_LABEL[data.kind]}</span>
       </div>
       <div className="pd-node-card">
-        {!isSource ? <Handle type="target" position={Position.Left} className="pd-handle" data-type="any" isConnectable={false} /> : null}
+        {!isSource ? (
+          <Handle type="target" position={data.vertical ? Position.Top : Position.Left} className="pd-handle" data-type="any" isConnectable={false} />
+        ) : null}
         <div className="pd-node-body" data-kind={data.kind}>
           {data.kind === WorkflowKind.TEXT_INPUT ? <span>ceramic vase, soft light…</span> : null}
         </div>
-        <Handle type="source" position={Position.Right} className="pd-handle" data-type={outputType} isConnectable={false} />
+        <Handle
+          type="source"
+          position={data.vertical ? Position.Bottom : Position.Right}
+          className="pd-handle"
+          data-type={outputType}
+          isConnectable={false}
+        />
       </div>
     </div>
   );
@@ -184,9 +212,31 @@ export default function PlannerDemo() {
       type: 'workflow',
       position: { x: spec.x, y: spec.y },
       selected: DEFAULT_SELECTION.has(spec.id),
-      data: { label: spec.label, kind: spec.kind, role: null },
+      data: { label: spec.label, kind: spec.kind, role: null, vertical: false },
     })),
   );
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const canvasWidth = useElementWidth(canvasRef);
+  const narrow = canvasWidth > 0 && canvasWidth < NARROW_CANVAS;
+  const [flow, setFlow] = useState<ReactFlowInstance<WorkflowNode> | null>(null);
+
+  // Rearrange when the canvas crosses between wide and narrow (adjusting state during render, not in an effect)...
+  const [arranged, setArranged] = useState(narrow);
+  if (arranged !== narrow) {
+    setArranged(narrow);
+    setNodes((current) =>
+      current.map((node) => {
+        const spec = specs.find((candidate) => candidate.id === node.id);
+        return spec ? { ...node, position: positionOf(spec, narrow) } : node;
+      }),
+    );
+  }
+
+  // ...then frame the graph again once React Flow has the new positions.
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => flow?.fitView(FIT));
+    return () => window.cancelAnimationFrame(frame);
+  }, [arranged, flow]);
   const [hovering, setHovering] = useState(false);
   const [pinned, setPinned] = useState(false);
 
@@ -199,9 +249,9 @@ export default function PlannerDemo() {
     () =>
       nodes.map((node) => ({
         ...node,
-        data: { ...node.data, role: previewing && selected.has(node.id) ? roleFor(node.id, plan) : null },
+        data: { ...node.data, role: previewing && selected.has(node.id) ? roleFor(node.id, plan) : null, vertical: narrow },
       })),
-    [nodes, plan, previewing, selected],
+    [nodes, plan, previewing, selected, narrow],
   );
 
   const edges = useMemo<Edge[]>(
@@ -238,7 +288,7 @@ export default function PlannerDemo() {
       note="A simplified reconstruction of the planning rules, rebuilt for this portfolio."
     >
       <div className="pd-layout">
-        <div className="pd-canvas">
+        <div className="pd-canvas" ref={canvasRef}>
           <div className="pd-toolbar">
             <button
               type="button"
@@ -264,8 +314,9 @@ export default function PlannerDemo() {
             edges={edges}
             nodeTypes={nodeTypes}
             onNodesChange={onNodesChange}
+            onInit={setFlow}
             fitView
-            fitViewOptions={{ padding: 0.26 }}
+            fitViewOptions={FIT}
             selectionOnDrag
             selectionMode={SelectionMode.Partial}
             panOnDrag={false}
@@ -273,7 +324,7 @@ export default function PlannerDemo() {
             zoomOnDoubleClick={false}
             preventScrolling={false}
             nodesConnectable={false}
-            minZoom={0.4}
+            minZoom={0.3}
             maxZoom={1.4}
             aria-label="Workflow canvas"
           >

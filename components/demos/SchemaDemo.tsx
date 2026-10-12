@@ -14,7 +14,8 @@ import {
   type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useElementWidth } from '@/lib/use-element-width';
 import type { EditorGlyph } from '../visuals/editor-icons';
 import { Lucide } from '../visuals/lucide-icons';
 import { DemoFrame } from './DemoFrame';
@@ -51,6 +52,8 @@ interface TableData extends Record<string, unknown> {
   role: Role | null;
   /** Matching column names when a search is active. */
   matches: readonly string[];
+  /** Name only, layers top to bottom, on a narrow canvas; the panel keeps the columns and keys. */
+  compact: boolean;
 }
 
 type TableNode = Node<TableData, 'table'>;
@@ -61,7 +64,10 @@ interface IconProps {
 }
 
 const LAYOUT: LayoutOptions = { nodeWidth: 210, headerHeight: 44, rowHeight: 26, gapX: 80, gapY: 36 };
-const FIT = { padding: 0.12 } as const;
+const COMPACT_LAYOUT: LayoutOptions = { nodeWidth: 164, headerHeight: 44, rowHeight: 0, gapX: 40, gapY: 16, vertical: true };
+const NARROW_CANVAS = 640;
+/** Leaves room at the top for the floating search bar, so no table sits under it. */
+const FIT = { padding: { top: '72px', right: '6%', bottom: '6%', left: '6%' } } as const;
 
 function Icon({ glyph, className }: IconProps) {
   return (
@@ -83,7 +89,20 @@ function Icon({ glyph, className }: IconProps) {
 }
 
 function TableNodeView({ data, selected }: NodeProps<TableNode>) {
-  const { table, role, matches } = data;
+  const { table, role, matches, compact } = data;
+  if (compact) {
+    return (
+      <div className="sx-node" data-role={role ?? undefined} data-selected={selected || undefined} data-compact>
+        <Handle type="target" position={Position.Top} id="in" className="sx-handle sx-handle-pk" isConnectable={false} />
+        <div className="sx-head">
+          <Icon glyph={Lucide.TABLE} className="sx-icon" />
+          <span className="sx-name">{table.name}</span>
+          <span className="sx-count">{table.columns.length} cols</span>
+        </div>
+        <Handle type="source" position={Position.Bottom} id="out" className="sx-handle sx-handle-fk" isConnectable={false} />
+      </div>
+    );
+  }
   return (
     <div className="sx-node" data-role={role ?? undefined} data-selected={selected || undefined}>
       <div className="sx-head">
@@ -115,21 +134,37 @@ function TableNodeView({ data, selected }: NodeProps<TableNode>) {
 
 const nodeTypes = { table: TableNodeView };
 
-function initialNodes(): TableNode[] {
-  const positions = layoutSchema(todoSchema, LAYOUT);
+function initialNodes(compact: boolean): TableNode[] {
+  const positions = layoutSchema(todoSchema, compact ? COMPACT_LAYOUT : LAYOUT);
   return todoSchema.map((table) => ({
     id: table.name,
     type: 'table',
     position: positions.get(table.name) ?? { x: 0, y: 0 },
-    data: { table, role: null, matches: [] },
+    data: { table, role: null, matches: [], compact },
   }));
 }
 
 export default function SchemaDemo() {
-  const [nodes, setNodes] = useState<TableNode[]>(initialNodes);
+  const [nodes, setNodes] = useState<TableNode[]>(() => initialNodes(false));
   const [focus, setFocus] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [flow, setFlow] = useState<ReactFlowInstance<TableNode> | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const canvasWidth = useElementWidth(canvasRef);
+  const compact = canvasWidth > 0 && canvasWidth < NARROW_CANVAS;
+
+  // Re-lay out when the canvas crosses between wide and narrow (adjusting state during render, not in an effect)...
+  const [arranged, setArranged] = useState(compact);
+  if (arranged !== compact) {
+    setArranged(compact);
+    setNodes(initialNodes(compact));
+  }
+
+  // ...then frame the diagram again once React Flow has the new positions.
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => flow?.fitView(FIT));
+    return () => window.cancelAnimationFrame(frame);
+  }, [arranged, flow]);
 
   const keys = useMemo(() => foreignKeys(todoSchema), []);
   const related = useMemo(() => (focus ? relationships(todoSchema, focus) : null), [focus]);
@@ -156,13 +191,14 @@ export default function SchemaDemo() {
         ...node,
         data: {
           ...node.data,
+          compact,
           role: roleFor(node.id),
           matches: searching
             ? node.data.table.columns.filter((column) => search.columns.has(`${node.id}.${column.name}`)).map((column) => column.name)
             : [],
         },
       })),
-    [nodes, roleFor, search, searching],
+    [nodes, roleFor, search, searching, compact],
   );
 
   const edges = useMemo<Edge[]>(
@@ -179,15 +215,15 @@ export default function SchemaDemo() {
         return {
           id: `${key.table}.${key.column}`,
           source: key.table,
-          sourceHandle: key.column,
+          sourceHandle: compact ? 'out' : key.column,
           target: key.references.table,
-          targetHandle: key.references.column,
+          targetHandle: compact ? 'in' : key.references.column,
           animated: true,
           selectable: false,
           className: `sx-edge ${tone}`,
         };
       }),
-    [keys, focus, search, searching],
+    [keys, focus, search, searching, compact],
   );
 
   const onNodesChange = useCallback((changes: NodeChange<TableNode>[]) => {
@@ -197,7 +233,7 @@ export default function SchemaDemo() {
   const toggle = (name: string) => setFocus((current) => (current === name ? null : name));
 
   const organize = () => {
-    setNodes(initialNodes());
+    setNodes(initialNodes(compact));
     window.requestAnimationFrame(() => flow?.fitView({ ...FIT, duration: 300 }));
   };
 
@@ -211,7 +247,7 @@ export default function SchemaDemo() {
       note="My own take on the Database Explorer’s schema view, rebuilt for this portfolio. The layering follows the rule cocoding.ai’s ELK layout uses, turned left to right so every edge runs straight into the key it references; tracing, search highlighting, and the join query are additions."
     >
       <div className="sx-layout">
-        <div className="sx-canvas">
+        <div className="sx-canvas" ref={canvasRef} data-compact={compact || undefined}>
           <div className="sx-toolbar">
             <label className="sx-search">
               <Icon glyph={Lucide.SEARCH} className="sx-icon" />
@@ -219,7 +255,7 @@ export default function SchemaDemo() {
               <input
                 type="search"
                 value={query}
-                placeholder="Search tables or columns..."
+                placeholder="Search schema…"
                 onChange={(event) => setQuery(event.target.value)}
               />
             </label>

@@ -85,10 +85,14 @@
 
 @utility type-mono {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   line-height: 1.5;
   font-stretch: 87.5%;
   letter-spacing: 0;
+
+  @media (width >= 48rem) {
+    font-size: 0.6875rem;
+  }
 }
 
 @utility type-figure {
@@ -1108,9 +1112,12 @@
 
 
   /* ───────────────────────── Project reconstructions ───────────────────────── */
+  /* The wide drawing needs room: below 45rem of its own width its labels would
+     shrink past legibility, so the figure shows its narrow drawing instead. */
   .viz {
     position: relative;
     margin: 0;
+    container-type: inline-size;
   }
 
   .viz svg {
@@ -1123,7 +1130,7 @@
     display: none !important;
   }
 
-  @media (width >= 48rem) {
+  @container (width >= 45rem) {
     .viz-wide {
       display: block !important;
     }
@@ -4150,6 +4157,19 @@
   transition: opacity 200ms ease;
 }
 
+.pd-node[data-compact] {
+  width: 7rem;
+}
+
+.pd-node[data-compact] .pd-node-kind,
+.pd-node[data-compact] .pd-node-body {
+  display: none;
+}
+
+.pd-node[data-compact] .pd-node-card {
+  height: 1.5rem;
+}
+
 .pd-node-label {
   display: flex;
   justify-content: space-between;
@@ -4373,6 +4393,29 @@
   color: var(--color-paper);
   border-radius: 10px;
   background: #0f0f0f;
+}
+
+.sx-canvas[data-compact] {
+  height: 26rem;
+}
+
+.sx-node[data-compact] {
+  width: 164px;
+}
+
+.sx-node[data-compact] .sx-count {
+  white-space: nowrap;
+}
+
+.sx-node[data-compact] .sx-head {
+  border-bottom: 0;
+  border-radius: 10px;
+}
+
+.sx-canvas .sx-node[data-compact] .react-flow__handle.sx-handle-pk,
+.sx-canvas .sx-node[data-compact] .react-flow__handle.sx-handle-fk {
+  right: auto;
+  left: 50%;
 }
 
 .sx-toolbar {

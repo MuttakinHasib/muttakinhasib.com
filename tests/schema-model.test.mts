@@ -39,6 +39,14 @@ describe('layoutSchema', () => {
     assert.ok(lists && sessions && lists.x === sessions.x && Math.abs(lists.y - sessions.y) >= options.headerHeight);
   });
 
+  it('runs layers top to bottom with a layer side by side when vertical', () => {
+    const positions = layoutSchema(todoSchema, { ...options, vertical: true });
+    const y = (name: string) => positions.get(name)?.y ?? 0;
+    assert.ok(y('todo_tags') < y('todos') && y('todos') < y('lists') && y('lists') < y('users'));
+    assert.equal(y('lists'), y('sessions'));
+    assert.ok((positions.get('lists')?.x ?? 0) + options.nodeWidth <= (positions.get('sessions')?.x ?? 0));
+  });
+
   it('orders a column by the tables before it', () => {
     const positions = layoutSchema(todoSchema, options);
     assert.ok((positions.get('lists')?.y ?? 0) < (positions.get('sessions')?.y ?? 0));
