@@ -478,28 +478,27 @@ export default function ExecutionOrderDemo() {
         </div>
 
         <div className="ag-panel">
-          <div>
-            <p className="type-small font-[600]">Run order</p>
-            <ol className="ag-run">
-              {layers.flatMap((layer, layerIndex) =>
-                layer.map((id, slot) => {
-                  const task = taskOf.get(id);
-                  return (
-                    <li key={id} data-layer-start={slot === 0 && layerIndex > 0 ? true : undefined} data-pending={id === pending || undefined}>
+          <p className="type-small font-[600]">Run order</p>
+          <ol className="ag-layers">
+            {layers.map((layer, layerIndex) => (
+              <li key={layer.join()} className="ag-layer">
+                <span className="ag-layer-name">Layer {layerIndex + 1}</span>
+                <ol className="ag-run">
+                  {layer.map((id) => (
+                    <li key={id} data-pending={id === pending || undefined}>
                       <span className="ag-run-order" aria-hidden="true">
                         {orderOf.get(id)}
                       </span>
-                      <span className="ag-run-dot" data-kind={task?.kind} aria-hidden="true" />
+                      <span className="ag-run-dot" data-kind={taskOf.get(id)?.kind} aria-hidden="true" />
                       {nameOf(id)}
-                      <span className="ag-run-layer">{id === pending ? 'saving' : `layer ${layerIndex + 1}`}</span>
+                      {id === pending ? <span className="ag-run-saving">saving</span> : null}
                     </li>
-                  );
-                }),
-              )}
-            </ol>
-          </div>
-
-          <p className="type-small min-h-[3em] text-graphite" aria-live="polite">
+                  ))}
+                </ol>
+              </li>
+            ))}
+          </ol>
+          <p className="type-small min-h-[1.5em] text-graphite" aria-live="polite">
             {message || 'The run order is worked out from the edges: a task runs once everything feeding it has.'}
           </p>
         </div>
