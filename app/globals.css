@@ -155,6 +155,8 @@
     text-size-adjust: 100%;
   }
 
+  /* Smooth for in-page links. Page navigation turns it off (data-scroll-behavior
+     on <html>), and so do back and forward (HistoryScroll), so neither slides. */
   @media (prefers-reduced-motion: no-preference) {
     html {
       scroll-behavior: smooth;

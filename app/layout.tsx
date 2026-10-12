@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Archivo, Martian_Mono } from 'next/font/google';
 import { Header } from '@/components/site/Header';
+import { HistoryScroll } from '@/components/site/HistoryScroll';
 import { JsonLd } from '@/components/site/JsonLd';
 import { profile } from '@/content/profile';
 import { personSchema, websiteSchema } from '@/lib/schema';
@@ -69,12 +70,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" className={`${archivo.variable} ${martian.variable}`}>
+    // Smooth scrolling is for in-page links; this lets Next.js jump instantly to the top on page navigation.
+    <html lang="en" data-scroll-behavior="smooth" className={`${archivo.variable} ${martian.variable}`}>
       <body>
         <a href="#main" className="skip-link">
           Skip to content
         </a>
         <Header />
+        <HistoryScroll />
         {children}
         <JsonLd data={[personSchema(), websiteSchema()]} />
       </body>
