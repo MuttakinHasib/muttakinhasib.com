@@ -138,12 +138,7 @@ async function CaseStudy({ params }: CaseStudyProps) {
                   {project.slug === ProjectSlug.COCODING ? <CocodingWorkspace /> : <ProjectVisual slug={project.slug} />}
                 </div>
               </ViewTransition>
-              <p className="type-small mt-3 opacity-75">
-                Original reconstruction for this portfolio. Product screenshots are not shown.
-                {project.slug === ProjectSlug.COCODING
-                  ? ' It streams a build when the page loads: Send replays it, any file opens in Code, and the finished app works.'
-                  : null}
-              </p>
+              <p className="type-small mt-3 opacity-75">Original reconstruction for this portfolio.</p>
             </div>
           </div>
         </header>
