@@ -212,7 +212,7 @@ export const projects: Project[] = [
     summary:
       'A browser IDE and real-time AI chat that turn a prompt into a working full-stack app, built from the first commit to production.',
     highlights: [
-      'Browser IDE: Monaco, a file explorer, Output and Terminal xterm.js sessions on each chat’s Kubernetes pod, and a live preview.',
+      'Browser IDE around Monaco and xterm.js, with a Database Explorer whose ER diagrams are laid out with React Flow and ELK.js.',
       'Agent output streamed over SSE into a live timeline, while the preview animates the step in progress.',
       'Web performance improved by 80%, reaching Lighthouse 100 SEO, 100 Accessibility, and 91 Performance.',
     ],

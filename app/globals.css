@@ -417,6 +417,29 @@
     animation-delay: var(--delay, 0ms);
   }
 
+  /* A pulse of light running along an edge toward the key it references. */
+  .v-pulse {
+    stroke-dasharray: 0.07 0.93;
+    opacity: 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .v-pulse {
+      opacity: 0.85;
+      animation: v-pulse-run 2400ms linear infinite;
+    }
+  }
+
+  @keyframes v-pulse-run {
+    from {
+      stroke-dashoffset: 1;
+    }
+
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
   .pulse {
     fill: none;
     stroke-linecap: round;
