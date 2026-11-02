@@ -1185,7 +1185,9 @@
     container-type: inline-size;
   }
 
-  .viz svg {
+  /* Only the wide/narrow canvases are direct children; nested icon <svg>s
+     keep their own width/height attributes. */
+  .viz > svg {
     display: block;
     width: 100%;
     height: auto;
