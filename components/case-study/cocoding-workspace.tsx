@@ -274,7 +274,7 @@ function ActivityScene({ activity }: SceneProps) {
           <ul className="cw-grid">
             {GRID_FILES.map((file) => (
               <li key={file} data-active={file === activity.subject || undefined}>
-                <FileIcon path={file} />
+                <FileIcon path={file} className="cw-file-icon" />
                 {file}
               </li>
             ))}
@@ -352,7 +352,7 @@ function ChatTranscript({ transcript, streaming, onOpen }: ChatTranscriptProps) 
                       {group.files.map((file) => (
                         <li key={file.name}>
                           <button type="button" className="cw-file" onClick={() => onOpen(`${file.path}/${file.name}`)}>
-                            <FileIcon path={file.name} />
+                            <FileIcon path={file.name} className="cw-file-icon" />
                             {file.name}
                             <span className="cw-path">{file.path}</span>
                           </button>
@@ -400,7 +400,7 @@ const Explorer = memo(function Explorer({ files, open, fresh, onOpen }: Explorer
         data-fresh={fresh === path || undefined}
         onClick={() => onOpen(path)}
       >
-        <FileIcon path={path} />
+        <FileIcon path={path} className="cw-file-icon" />
         {path.split('/').at(-1)}
       </button>
     </li>
@@ -416,17 +416,17 @@ const Explorer = memo(function Explorer({ files, open, fresh, onOpen }: Explorer
       </div>
       <ul className="cw-tree">
         <li className="cw-folder" style={{ '--depth': 0 } as CSSProperties}>
-          <FolderIcon /> Workspace
+          <FolderIcon className="cw-folder-icon" /> Workspace
         </li>
         <li className="cw-folder" style={{ '--depth': 1 } as CSSProperties}>
-          <FolderIcon /> src
+          <FolderIcon className="cw-folder-icon" /> src
         </li>
         {folders.map((folder) => {
           const children = inFolder(folder);
           if (children.length === 0) return null;
           return [
             <li key={folder} className="cw-folder" style={{ '--depth': 2 } as CSSProperties}>
-              <FolderIcon /> {folder.split('/').at(-1)}
+              <FolderIcon className="cw-folder-icon" /> {folder.split('/').at(-1)}
             </li>,
             ...children.map((path) => fileButton(path, 3)),
           ];
@@ -491,7 +491,7 @@ function CodeView({ path, terminal }: CodeViewProps) {
     <div className="cw-code-view">
       <div className="cw-tabs">
         <span className="cw-tab" data-active>
-          <FileIcon path={path} />
+          <FileIcon path={path} className="cw-file-icon" />
           {name}
           <Icon glyph={Lucide.X} className="cw-icon-sm" />
         </span>

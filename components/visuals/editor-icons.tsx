@@ -132,13 +132,13 @@ export function EditorIcon({ x, y, glyph, size, color, strokeWidth }: EditorIcon
 
 interface HtmlIconProps {
   glyph: EditorGlyph;
-  /** Rendered width and height, for HTML contexts that set them. */
+  /** Rendered width and height; a sizing class still overrides these. */
   size?: number;
   className?: string;
 }
 
 /** The same glyphs as `EditorIcon`, as a standalone `<svg>` for HTML contexts. */
-export function HtmlIcon({ glyph, size, className }: HtmlIconProps) {
+export function HtmlIcon({ glyph, size = 16, className }: HtmlIconProps) {
   return (
     <svg
       className={className}

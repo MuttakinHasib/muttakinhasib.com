@@ -62,11 +62,20 @@ interface HtmlFileIconProps {
   className?: string;
 }
 
+/** Intrinsic icon size, so an omitted sizing class cannot stretch the icon across its row. */
+const HTML_ICON_PX = 16;
+
 /** The file-type icon as cocoding.ai's HTML FileIcon draws it. */
 export function HtmlFileIcon({ path, className }: HtmlFileIconProps) {
   const glyph = fileTypeFor(path);
   return (
-    <svg className={className} viewBox={`0 0 ${glyph.box} ${glyph.box}`} aria-hidden="true">
+    <svg
+      className={className}
+      viewBox={`0 0 ${glyph.box} ${glyph.box}`}
+      width={HTML_ICON_PX}
+      height={HTML_ICON_PX}
+      aria-hidden="true"
+    >
       <path d={glyph.d} fill={glyph.fill} fillRule={glyph.evenOdd ? 'evenodd' : undefined} />
     </svg>
   );
@@ -82,6 +91,8 @@ export function HtmlFolderIcon({ className }: HtmlFolderIconProps) {
     <svg
       className={className}
       viewBox={`0 0 ${FOLDER_TWOTONE.box} ${FOLDER_TWOTONE.box}`}
+      width={HTML_ICON_PX}
+      height={HTML_ICON_PX}
       fill="none"
       stroke="currentColor"
       strokeWidth={2}
